@@ -7,8 +7,10 @@
 # 	Text07.txt Text08.txt Text09.txt Text10.txt Text11.txt Text12.txt
 # RUNOBJS = ProblemPart1.run ProblemPart2.run ProblemPart3.run
 
+ifeq ($(CC),cc)
 ifneq (,$(shell which icc))
-	CC = icc
+		CC = icc
+endif
 endif
 PYCC = $(CC) -pthread
 PYLD = $(CC) -pthread -shared
