@@ -6,9 +6,13 @@
 # Generated files
 *.synctex.gz
 *.pdf
+build/
+*.so
 
 # Binary files
 
 # External files
 
 # Private files
+.vscode/
+setup.cfg
