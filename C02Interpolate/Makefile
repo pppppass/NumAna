@@ -10,8 +10,8 @@
 ifneq (,$(shell which icc))
 	CC = icc
 endif
-PYCC = $(CC) -pthreads
-PYLD = $(CC) -pthreads -shared
+PYCC = $(CC) -pthread
+PYLD = $(CC) -pthread -shared
 
 .PHONY: all
 all: Report.pdf
