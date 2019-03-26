@@ -49,7 +49,7 @@ intp.so: setup.py setup.cfg $(CDEPS)
 %.py: %.ipynb
 	jupyter nbconvert --to script $*
 
-%.run: %.py op.so $(PYDEPS)
+%.run: %.py intp.so
 	python $<
 	touch $@
 
