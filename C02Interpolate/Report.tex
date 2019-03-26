@@ -191,7 +191,7 @@ When coercive boundary condition is imposed, we have
 \msbr{ 2 & \lambda_1 & & & & \\ 1 - \lambda_2 & 2 & \lambda_2 & & & \\ & 1 - \lambda_3 & 2 & \ddots & & \\ & & \ddots & \ddots & \ddots & \\ & & & \ddots & 2 & \lambda_{ n - 2 } \\ & & & & 1 - \lambda_{ n - 1 } & 2 } \msbr{ m_1 \\ m_2 \\ m_3 \\ \vdots \\ m_{ n - 2 } \\ m_{ n - 1 } } = \msbr{ \mu_1 - \rbr{ 1 - \lambda_1 } m_0  \\ \mu_2 \\ \mu_3 \\ \vdots \\ \mu_{ n - 2 } \\ \mu_{ n - 1 } - \lambda_{ n - 1 } m_n }.
 \end{equation}
 
-Solving these equations needs $ O \rbr{n} $ time complexity using Thomas algorithm. Evaluation is done using Hermite interpolation codes after $m_i$ is calculated. In implementation, we use the \verb"dgtsv" function from LAPACK to solve such equations, {\color{red} which is purely numerical algebra routine and is permitted to use}.
+Solving these equations needs $ O \rbr{n} $ time complexity using Thomas algorithm. Evaluation is done using Hermite interpolation codes after $m_i$ is calculated. In implementation, we use the \verb"dgtsv" function from LAPACK to solve such equations, {\color{red} which is purely numerical algebra routine and is told permitted to use}.
 
 \section{Numerical result}
 
@@ -260,7 +260,8 @@ We then consider Chebyshev points as interpolation nodes, say
 x_i = 5 \cos \frac{ \rbr{ 2 n + 1 - 2 i } \spi }{ 2 \rbr{ n + 1 } }, \\
 y_i = f \rbr{x_i}
 \end{gather}
-for $ i = 0, 1, \cdots, n $
+for $ i = 0, 1, \cdots, n $.
+
 
 The interpolation results are shown in Figure \ref{Fig:Cheb5}, \ref{Fig:Cheb10} and \ref{Fig:Cheb20}, with $ n = 5, 10, 20 $ respectively.
 
@@ -285,7 +286,7 @@ The interpolation results are shown in Figure \ref{Fig:Cheb5}, \ref{Fig:Cheb10} 
 \label{Fig:Cheb20}
 \end{figure}
 
-We note that the results of Lagrange interpolation and Newton interpolation coincide essentially. Compared with evenly spaced nodes, this interpolation method converges using Chebyshev points when doing interpolation in $ \sbr{ -5, 5 } $. When doing extrapolation in $ \srbr{ -6, -5 } \cup \rsbr{ 5, 6 } $, the error still blows up rapidly.
+We note that the results of Lagrange interpolation and Newton interpolation coincide essentially. Compared with evenly spaced nodes, this interpolation method converges using Chebyshev points when performing interpolation in $ \sbr{ -5, 5 } $. When performing extrapolation in $ \srbr{ -6, -5 } \cup \rsbr{ 5, 6 } $, the error still blows up rapidly. Nevertheless, the interpolation in $ \sbr{ -5, 5 } $ is very much better than using evenly spaced nodes.
 
 \subsection{Validation}
 
@@ -327,7 +328,7 @@ y_i = g \rbr{x_i}.
 \end{gather}
 According to the analysis provided in textbook, the interpolated polynomial converges uniformly to $ g \rbr{x} $ in a compact domain as $ n \rightarrow \infty $ if we use exact arithmetic. However, rounding error may ruin the solution.
 
-We set $ n = 100 $ and investigate the error $ p \rbr{x} - f \rbr{x} $. We consider three implementations: the Lagrange method, the Newton method in the order $ x_0, x_1, \cdots, x_n $, and the permuted Newton method in the order $ x_{ \pi \rbr{0} }, x_{ \pi \rbr{1} }, \cdots, x_{ \pi \rbr{n} } $. Here the permutation $\pi$ is selected as follows. We first choose $ \pi \rbr{0} = 0 $ and $ \pi \rbr{1} = n $. We then select $ \pi \rbr{2} $ maximizing
+We set $ n = 100 $ and investigate the error $ \rbr{ p - f } \rbr{x} $. We consider three implementations: the Lagrange method, the Newton method in the order $ x_0, x_1, \cdots, x_n $, and the permuted Newton method in the order $ x_{ \pi \rbr{0} }, x_{ \pi \rbr{1} }, \cdots, x_{ \pi \rbr{n} } $. Here the permutation $\pi$ is selected as follows. We first choose $ \pi \rbr{0} = 0 $ and $ \pi \rbr{1} = n $. We then select $ \pi \rbr{2} $ maximizing
 \begin{equation}
 \rbr{ x_{ \pi \rbr{2} } - x_{ \pi \rbr{0} } } \rbr{ x_{ \pi \rbr{2} } - x_{ \pi \rbr{1} } }
 \end{equation}
@@ -404,7 +405,7 @@ Denote
 A = \frac{ 2 \alpha }{ 1 + \alpha^2 }, \\
 B = \frac{1}{ 1 + \alpha^2 },
 \end{gather}
-by binomial expansion we deduce
+we notice that $ \abs{A}, \abs{B} \le 1 $. By binomial expansion we deduce
 \begin{equation}
 M_{ n + 1 } \le \frac{ \rbr{ n + 1 } ! }{ 1 + \alpha^2 } \sum_{ k \ge 0 } A^{ n + 1 - 2 k } B^k \binom{ n + 1 - k }{k} \le \rbr{ n + 1 } ! \sum_{ k \ge 0 } \binom{ n + 1 - k }{k}.
 \end{equation}
@@ -432,7 +433,7 @@ We note that we do not give any estimation of convergence speed here. Actually, 
 
 \subsection{Interpolation error}
 
-We finally investigate the interpolate error. We consider the norm of $ p - f $ in the $L^1$, $L^2$ and $L^{\infty}$ sense. The values are approximated by composited trapezoid formula. The figure is given in Figure \ref{Fig:Err}. The vertical axis correspond to $n$ and the horizonal axies correspond to the norms of errors.
+We finally investigate the interpolate error. We consider the norm of $ p - f $ in the $L^1$, $L^2$ and $L^{\infty}$ sense. The values are approximated by composited trapezoid formula. The figure is given in Figure \ref{Fig:Err}. The horizontal axis correspond to $n$ and the vertical axis correspond to the norms of errors.
 
 \begin{figure}
 \centering
