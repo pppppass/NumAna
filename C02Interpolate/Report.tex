@@ -2,18 +2,445 @@
 %! TeX program = LuaLaTeX
 
 \documentclass[english, nochinese]{pnote}
-\usepackage{siunitx}
 \usepackage[paper, cgu]{pdef}
 \usepackage{pgf}
 
-\title{Report of Project in Chapter 2}
+\title{Report of Project of Chapter 2}
 \author{Zhihan Li, 1600010653}
-\date{March 24, 2019}
+\date{March 26, 2019}
 
 \begin{document}
 
 \maketitle
 
-\textbf{Problem (Page 75 Coding Exercise 2).} 
+\textbf{Problem (Page 75 Coding Exercise 2).} We implement Lagrange and Newton polynomial interpolation, piece-wise linear interpolation, piece-wise cubic Hermite interpolation and cubic spline interpolation method for this project. We conduct some analysis towards these methods, in terms of both precision and efficiency. We make comparison using the Runge function. The details are described in the following sections. {\color{red}(This serves as the abstract part.)}
+
+\section{Description}
+
+\subsection{Polynomial interpolation}
+
+Given $ n + 1 $ points $ \rbr{ x_i, y_i } $ with $ i = 0, 1, \cdots, n $, we aim to find a polynomial $ p \in P_n $ such that the the interpolation condition is satisfied
+\begin{equation}
+p \rbr{x_i} = y_i.
+\end{equation}
+
+We may explicitly construct the polynomial by
+\begin{equation} \label{Eq:Lagr}
+p \rbr{x} = \sum_{ i = 1 }^n \prod_{\sarr{c}{ j = 1 \\ j \neq i }}^n \frac{ x - x_j }{ x_i - x_j } y_i.
+\end{equation}
+This corresponds to \emph{Lagrange interpolation}.
+
+We may also construct the polynomial by induction, constructing $ p^j \in P_j $ for $ j = 0, 1, \cdots, n $ such that for $ i = 0, 1, \cdots, j  $,
+\begin{equation}
+p^j \rbr{x_i} = y_i.
+\end{equation}
+We set $ p^0 \rbr{x} \equiv y_0 $. By noting that
+\begin{equation}
+\rbr{ p^{ j + 1 } - p^{j} } \rbr{x_i} = 0
+\end{equation}
+for $ i = 0, 1, \cdots, j $, we assume the factorization
+\begin{equation}
+p^{ j + 1 } \rbr{x} = p^j \rbr{x} + C^j \prod_{ i = 0 }^j \rbr{ x - x_i }
+\end{equation}
+where $C^j$ is an underdetermined constant. Plugging in $ x = x^{ j + 1 } $ immediately yields
+\begin{equation} \label{Eq:NewtCoef}
+C^j = \bfrac{\rbr{ y_{ j + 1 } - p^j \rbr{x_{ j + 1 }} }}{ \prod_{ i = 0 }^j \rbr{ x_{ j + 1 } - x_i } } = y [ x_0, x_1, \cdots, x_j ].
+\end{equation}
+This corresponds to Newton interpolation.
+
+\subsection{Piece-wise polynomial interpolation}
+
+It is well understood that high-order polynomial interpolation is unstable and suffer from Runge's phenomenon. To mitigate this inconvenience, we split the interval $ I = \sbr{ x_0, x_n } $ into sub-intervals $ I_i = \sbr{ x_{ i - 1 }, x_i } $ for $ i = 1, 2, \cdots, n $ and construct piece-wise polynomials with respect to these intervals. We always assume $ x_0 < x_1 < \cdots < x_n $ here. We reformulate this kind of interpolation in the language of finite element space.
+
+The immediate choice is piece-wise linear polynomial. To be concise, we need to construct a function $p$ such that $ \nvbr{p}_{I_i} \in P_1 \rbr{I_i} $ with $ p \in C^0 \rbr{I} $. The interpolation condition is still given by
+\begin{equation}
+p \rbr{x_i} = y_i
+\end{equation}
+for $ i = 0, 1, \cdots, n $. We note that we may transform $I_i$ from the standard interval element $ \hat{I} = \sbr{ 0, 1 } $ with an affine transform $ T_i : \hat{I} \rightarrow I_i, \hat{x} \mapsto x = x_i + \hat{x} \rbr{ x_i - x_{ i - 1 } } $. With this transform, we have $ \hat{p}^i = \nvbr{p}_{I_i} \circ T_i \in P_1 (\hat{I}) $, and the interpolation condition is still given by evaluation functionals
+\begin{gather}
+\hat{E}_1 \rbr{\hat{p}^i} = \hat{p}^i \rbr{0} = y_{ i - 1 }, \\
+\hat{E}_2 \rbr{\hat{p}^i} = \hat{p}^i \rbr{1} = y_i.
+\end{gather}
+The corresponding basis functions on $\hat{I}$
+\begin{gather}
+\hat{\phi}_1 \rbr{x} = 1 - x, \\
+\hat{\phi}_2 \rbr{x} = x
+\end{gather}
+respectively, which actually form the dual basis of evaluation functionals $ \hat{E}_1, \hat{E}_2 $. As a result, we have
+\begin{equation}
+\hat{p}^i = y_i \hat{\phi}_1 + y_{ i + 1 } \hat{\phi}_2.
+\end{equation}
+We may then recover $p$ through transformation $ \nvbr{p}_{I_i} = \hat{p}^i \circ T_i^{-1} $ or
+\begin{equation}
+p \rbr{x} = \hat{p}^i \rbr{ T_i^{-1} \rbr{x} }
+\end{equation}
+for $ x \in I_i $. This corresponds to piece-wise linear interpolation, which also lies in the category of Hermite interpolation.
+
+Another choice is piece-wise cubic polynomial, or say $ \nvbr{p}_{I_i} \in P_3 \rbr{I_i} $. The interpolation condition is given by
+\begin{gather}
+p \rbr{x_i} = y_i, \\
+p' \rbr{x_i} = m_i
+\end{gather}
+for $ i = 0, 1, \cdots, n $. The transformed functions also satisfy $ \nvbr{\hat{p}}_{I_i} \in P_3 \rbr{\hat{I}} $. The evaluation functionals on $\hat{I}$ is
+\begin{gather}
+\hat{E}_1 \rbr{\hat{p}^i} = \hat{p}^i \rbr{0} = y_{ i - 1 }, \\
+\hat{E}_2 \rbr{\hat{p}^i} = \hat{p}^i \rbr{1} = y_i, \\
+\hat{E}_3 \rbr{\hat{p}^i} = \rbr{\hat{p}^i}' \rbr{0} = \rbr{ \det \nabla T_i } m_{ i - 1 } = \Delta x_i m_{ i - 1 }, \\
+\hat{E}_4 \rbr{\hat{p}^i} = \rbr{\hat{p}^i}' \rbr{1} = \rbr{ \det \nabla T_i } m_i = \Delta x_i m_i
+\end{gather}
+where $ \Delta x_i = x_i - x_{ i - 1 } $. The corresponding dual basis or basis functions are
+\begin{gather}
+\hat{\phi}_1 \rbr{x} = 2 \rbr{ x - 1 }^2 \rbr{ x + \frac{1}{2} }, \\
+\hat{\phi}_2 \rbr{x} = -2 x^2 \rbr{ x - \frac{3}{2} }, \\
+\hat{\phi}_3 \rbr{x} = \rbr{ x - 1 }^2 x, \\
+\hat{\phi}_4 \rbr{x} = x^2 \rbr{ x - 1 }.
+\end{gather}
+Hence,
+\begin{equation}
+\hat{p}^i = y_i \hat{\phi}_1 + y_{ i + 1 } \hat{\phi}_2 + m_i \hat{\phi}_3 + m_{ i + 1 } \hat{\phi}_4
+\end{equation}
+and
+\begin{equation}
+p \rbr{x} = \hat{p}^i \rbr{T_i^{-1} \rbr{x} }
+\end{equation}
+for $ x \in I_i $. This corresponds to piece-wise cubic Hermite interpolation.
+
+\subsection{Cubic spline interpolation}
+
+We note that the interpolation introduced in the previous section involves only local operations. We may try to add in some non-locality, and this gives rise to splines.
+
+One possible way to is to constrain $ \nvbr{p}_{I_i} \in P_3 \rbr{I_i} $ with $ p \in C^2 \rbr{I} $, and the interpolation condition is given by
+\begin{equation}
+p \rbr{x_i} = y_i.
+\end{equation}
+Suppose
+\begin{equation}
+p' \rbr{x_i} = m_i.
+\end{equation}
+The $C^2$ continuity boils down to
+\begin{equation} \label{Eq:CubSplEq}
+\rbr{ 1 - \lambda_i } m_{ i - 1 } + 2 m_i + \lambda_i m_{ i + 1 } = \mu_i
+\end{equation}
+for $ i = 1, 2, \cdots, n - 1 $ where
+\begin{equation}
+\lambda_i = \frac{ \Delta x_i }{ \Delta x_i + \Delta x_{ i + 1 } }
+\end{equation}
+and
+\begin{equation}
+\mu_i = 3 \rbr{ \rbr{ 1 - \lambda_i } \frac{ \Delta y_i }{ \Delta x_i } + \lambda_i \frac{ \Delta y_{ i + 1 } }{ \Delta x_{ i + 1 } } }
+\end{equation}
+where
+\begin{equation}
+\Delta y_i = y_i - y_{ i - 1 }.
+\end{equation}
+To vanish the remaining degree of freedom, we may set the natural boundary condition
+\begin{equation}
+p'' \rbr{x_1} = p'' \rbr{x_n} = 0,
+\end{equation}
+which turns out to be
+\begin{gather}
+\label{Eq:CubSplEq1}
+2 m_0 + \lambda_0 m_1 = \mu_0, \\
+\label{Eq:CubSplEqn}
+2 m_n + \rbr{ 1 - \lambda_n } m_{ n - 1 } = \mu_n
+\end{gather}
+with $ \lambda_0 = 1 $, $ \lambda_n = 0 $,
+\begin{gather}
+\mu_0 = 3 \frac{ \Delta y_1 }{ \Delta x_1 }, \\
+\mu_n = 3 \frac{ \Delta y_n }{ \Delta x_n }.
+\end{gather}
+Another choice is coercive boundary condition, forcing $ p' \rbr{x_0} = m_0 $ and $ p' \rbr{x_n} = m_n $ with $m_0$ and $m_n$ explicitly given. We ignore periodical boundary condition here. These correspond to cubic spline interpolation.
+
+\section{Implementation}
+
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"intp/newt.c": Newton polynomial interpolation;
+\item \verb"intp/lagr.c": Lagrange polynomial interpolation;
+\item \verb"intp/lin.c": piece-wise linear interpolation;
+\item \verb"intp/cub.c": piece-wise cubic Hermite interpolation;
+\item \verb"intp/spl_cub.c": cubic spline interpolation;
+\item \verb"intp/utils.c": miscellaneous utility functions.
+\end{partlist}
+We write Python wrappers for C functions in \verb"intp/warppers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". In brief, {\color{red} we write C codes for computation and Python codes for visualization, which is suggested in the class}.
+
+\subsection{Polynomial interpolation}
+
+The Lagrange interpolation needs not to compute anything before evaluating $ p \rbr{x} $. However for a single point, evaluation of $ p \rbr{x} $ needs $ O \rbr{n^2} $ operations if we directly adopt a cascaded loop for \eqref{Eq:Lagr}.
+
+The Newton interpolation does not need to calculate the coefficients from \eqref{Eq:NewtCoef}. We notice the two representations enjoy identical time complexity ($ 3 n \rbr{ n - 1 } / 2 $ floating point operations) and identical space complexity ($ n + O \rbr{1} $ floating point numbers storage), and we calculate the value using
+\begin{equation} \label{Eq:NewtRec}
+\bfrac{\rbr{ y_{ j + 1 } - p^j \rbr{x_{ j + 1 }} }}{ \prod_{ i = 1 }^j \rbr{ x_{ j + 1 } - x_i } }
+\end{equation}
+since it is a little simplier for implementation. Horner's method is always applied to acclerate evaluation of $ p^j \rbr{x} $ and $ p \rbr{x} $. We note that the computational of $C^j$ needs $ O \rbr{n^2} $ operations while evaluation of $ p \rbr{x} $ needs only $ O \rbr{n} $ operations.
+
+In practice, $n$ is not so large and the evaluation step dominates. Hence, Newton interpolation is generally preferred.
+
+\subsection{Piece-wise polynomial interpolation}
+
+The only difficulty of piece-wise polynomial interpolation lies in indexing. For $x$, it needs some computation to tell to which $I_i$ $x$ belong. In the one-dimensional case, the strictly increasing property of $x_i$ means we can bisect on $i$. This involves a $ O \rbr{ \log n } $ time complexity for indexing. In general, the time complexity is $ O \rbr{ \log n } $ for evaluation a single point $ p \rbr{x} $ using either piece-wise linear or cubic Hermite interpolation.
+
+\subsection{Cubic spline interpolation}
+
+The equations \eqref{Eq:CubSplEq}, \eqref{Eq:CubSplEq1} and \eqref{Eq:CubSplEqn} can be summarized as a tri-diagonal equation. To be exact, when natural boundary condition is imposed, we have
+\begin{equation}
+\msbr{ 2 & \lambda_0 & & & & \\ 1 - \lambda_1 & 2 & \lambda_1 & & & \\ & 1 - \lambda_2 & 2 & \ddots & & \\ & & \ddots & \ddots & \ddots & \\ & & & \ddots & 2 & \lambda_{ n - 1 } \\ & & & & 1 - \lambda_n & 2 } \msbr{ m_0 \\ m_1 \\ m_2 \\ \vdots \\ m_{ n - 1 } \\ m_n } = \msbr{ \mu_0 \\ \mu_1 \\ \mu_2 \\ \vdots \\ \mu_{ n - 1 } \\ \mu_n }.
+\end{equation}
+When coercive boundary condition is imposed, we have
+\begin{equation}
+\msbr{ 2 & \lambda_1 & & & & \\ 1 - \lambda_2 & 2 & \lambda_2 & & & \\ & 1 - \lambda_3 & 2 & \ddots & & \\ & & \ddots & \ddots & \ddots & \\ & & & \ddots & 2 & \lambda_{ n - 2 } \\ & & & & 1 - \lambda_{ n - 1 } & 2 } \msbr{ m_1 \\ m_2 \\ m_3 \\ \vdots \\ m_{ n - 2 } \\ m_{ n - 1 } } = \msbr{ \mu_1 - \rbr{ 1 - \lambda_1 } m_0  \\ \mu_2 \\ \mu_3 \\ \vdots \\ \mu_{ n - 2 } \\ \mu_{ n - 1 } - \lambda_{ n - 1 } m_n }.
+\end{equation}
+
+Solving these equations needs $ O \rbr{n} $ time complexity using Thomas algorithm. Evaluation is done using Hermite interpolation codes after $m_i$ is calculated. In implementation, we use the \verb"dgtsv" function from LAPACK to solve such equations, {\color{red} which is purely numerical algebra routine and is permitted to use}.
+
+\section{Numerical result}
+
+\subsection{Model problem}
+
+We consider the model problem with the Runge function
+\begin{equation}
+f \rbr{x} = \frac{1}{ 1 + x^2 }.
+\end{equation}
+We have
+\begin{equation}
+f' \rbr{x} = \frac{ -2 x }{\rbr{ 1 + x^2 }^2}.
+\end{equation}
+We interpolation this function on $ \sbr{ -5, 5 } $.
+
+\subsection{Numerical results}
+
+We first consider evenly spaced interpolation nodes, say
+\begin{gather}
+x_i = 5 + i h, \\
+y_i = f \rbr{x_i}
+\end{gather}
+with
+\begin{equation}
+h = \frac{10}{n}
+\end{equation}
+and $ i = 0, 1, \cdots, n $.
+
+The interpolation results are shown in Figure \ref{Fig:Even5}, \ref{Fig:Even10} and \ref{Fig:Even20}, with $ n = 5, 10, 20 $ respectively. Here \textsf{Runge} corresponds to the interpolated function $f$, \textsf{Cubic} corresponds to piece-wise cubic Hermite interpolation, \textsf{Spline} corresponds to cubic spline interpolation.
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure1.pgf}}
+\caption{Interpolation using evenly spaced nodes with $ n = 5 $}
+\label{Fig:Even5}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure4.pgf}}
+\caption{Interpolation using evenly spaced nodes with $ n = 10 $}
+\label{Fig:Even10}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure5.pgf}}
+\caption{Interpolation using evenly spaced nodes with $ n = 20 $}
+\label{Fig:Even20}
+\end{figure}
+
+The figures are produced by evaluating $ N = 12001 $ points evenly spaced on $ \sbr{ -6, 6 } $, say
+\begin{gather}
+\tilde{x}_i = -6 + 12 \tilde{h}, \\
+\tilde{y}_i = p \rbr{x_i}
+\end{gather}
+with $ i = 0, 1, \cdots, N $ where
+\begin{equation}
+\tilde{h} = \frac{12}{N}.
+\end{equation}
+
+From these figures, we find that the piece-wise polynomial interpolations converges well to the original Runge function $f$, while Lagrange interpolation suffers severely from oscillation. This reflects the Runge's phenomenon. Among the four succeeded methods, piece-wise linear interpolation is the worst since the approximated $p$ does not have sufficient smoothness. Piece-wise cubic Hermite polynomial interpolation is the best since it requires more information (the value of first-order derivatives $f'$). Cubic splines are slightly worse, and the natural boundary condition is perceivably worse than the coercive boundary condition.
+
+We then consider Chebyshev points as interpolation nodes, say
+\begin{gather}
+x_i = 5 \cos \frac{ \rbr{ 2 n + 1 - 2 i } \spi }{ 2 \rbr{ n + 1 } }, \\
+y_i = f \rbr{x_i}
+\end{gather}
+for $ i = 0, 1, \cdots, n $
+
+The interpolation results are shown in Figure \ref{Fig:Cheb5}, \ref{Fig:Cheb10} and \ref{Fig:Cheb20}, with $ n = 5, 10, 20 $ respectively.
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure6.pgf}}
+\caption{Interpolation using Chebyshev points with $ n = 5 $}
+\label{Fig:Cheb5}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure7.pgf}}
+\caption{Interpolation using Chebyshev points with $ n = 10 $}
+\label{Fig:Cheb10}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure8.pgf}}
+\caption{Interpolation using Chebyshev points with $ n = 20 $}
+\label{Fig:Cheb20}
+\end{figure}
+
+We note that the results of Lagrange interpolation and Newton interpolation coincide essentially. Compared with evenly spaced nodes, this interpolation method converges using Chebyshev points when doing interpolation in $ \sbr{ -5, 5 } $. When doing extrapolation in $ \srbr{ -6, -5 } \cup \rsbr{ 5, 6 } $, the error still blows up rapidly.
+
+\subsection{Validation}
+
+We validate the continuity of piece-wise polynomial interpolation in the following figures. We may apply numerical differentiation to estimate the first-order and second-order derivatives of $p$, by
+\begin{gather}
+p' \rbr{\frac{ \tilde{x}_i + \tilde{x}_{ i + 1 } }{2}} \approx \frac{ \tilde{y}_{ i + 1 } - \tilde{y}_i }{\tilde{h}}, \\
+p'' \rbr{\tilde{x}_i} \approx \frac{ \tilde{y}_{ i - 1 } + \tilde{y}_{ i + 1 } - 2 \tilde{y}_i }{\tilde{h}^2}.
+\end{gather}
+The figure of first-order derivative $p'$ and second-order derivative $p''$ are shown in Figure \ref{Fig:ValFirst} and \ref{Fig:ValSecond} respectively. We set $ n = 5 $ here.
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure2.pgf}}
+\caption{(Approximated) $p'$ and $f'$ with $ n = 5 $}
+\label{Fig:ValFirst}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure3.pgf}}
+\caption{(Approximated) $p''$ and $f''$ with $ n = 5 $}
+\label{Fig:ValSecond}
+\end{figure}
+
+From this results, we are convinced that the piece-wise cubic Hermite interpolation yields a $ p \in C^1 \rbr{I} $ with $ \nvbr{p}_{I_i} \in P^3 \rbr{I_i} $. We are also convinced that cubic splines yield $ p \in C^2 \rbr{I} $ with $ \nvbr{p}_{I_i} \in P^3 \rbr{I_i} $. Moreover, we can directly observe the coercive condition $ p' \rbr{x_0} = m_0 $, $ p' \rbr{x_n} = m_n $ from Figure \ref{Fig:ValFirst} and the natural boundary condition $ p'' \rbr{x_0} = 0 $, $ p'' \rbr{x_n} = 0 $ from Figure \ref{Fig:ValSecond}.
+
+\section{Discussion}
+
+\subsection{Numerical stability}
+
+It is well known that polynomial interpolation suffers from stability issues, among of which the sensibility to rounding is a prominent one. We investigate different implementations of polynomial interpolations. We interpolate the (complex) analytical function
+\begin{equation}
+g \rbr{x} = \se^x.
+\end{equation}
+We adopt evenly spaced interpolation nodes
+\begin{gather}
+x_i = \frac{i}{ n - 1 }, \\
+y_i = g \rbr{x_i}.
+\end{gather}
+According to the analysis provided in textbook, the interpolated polynomial converges uniformly to $ g \rbr{x} $ in a compact domain as $ n \rightarrow \infty $ if we use exact arithmetic. However, rounding error may ruin the solution.
+
+We set $ n = 100 $ and investigate the error $ p \rbr{x} - f \rbr{x} $. We consider three implementations: the Lagrange method, the Newton method in the order $ x_0, x_1, \cdots, x_n $, and the permuted Newton method in the order $ x_{ \pi \rbr{0} }, x_{ \pi \rbr{1} }, \cdots, x_{ \pi \rbr{n} } $. Here the permutation $\pi$ is selected as follows. We first choose $ \pi \rbr{0} = 0 $ and $ \pi \rbr{1} = n $. We then select $ \pi \rbr{2} $ maximizing
+\begin{equation}
+\rbr{ x_{ \pi \rbr{2} } - x_{ \pi \rbr{0} } } \rbr{ x_{ \pi \rbr{2} } - x_{ \pi \rbr{1} } }
+\end{equation}
+and so on. This heuristic comes from the denominator of \eqref{Eq:NewtCoef}: in order to maintain numerical stability, we maximize the possible denominator in a step-by-step manner. The error are shown in Table \ref{Tbl:ExpAt0} and \ref{Tbl:ExpAt1}.
+
+\begin{table}
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+$x$ & Lagrange & Newton & Newton, permuted \\
+\hline
+\input{Table1.tbl}
+\end{tabular}
+\caption{Error of interpolation near $ x = 0 $}
+\label{Tbl:ExpAt0}
+\end{table}
+
+\begin{table}
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+$x$ & Lagrange & Newton & Newton, permuted \\
+\hline
+\input{Table2.tbl}
+\end{tabular}
+\caption{Error of interpolation near $ x = 0 $}
+\label{Tbl:ExpAt1}
+\end{table}
+
+We can observe the convergence in the center of $ \rbr{ 0, 1 } $, but rounding error gets involved near $ x = 0 $ or $ x = 1 $ so huge error gets into the play. We can find that the permuted Newton method is always better than Lagrange method, which in trun is better than the vanilla Newton method. In other words, the Newton methods exchange numerical stability with efficiency. Slight modification may solves the problem.
+
+\subsection{Convergence of polynomial interpolation on Chebyshev points}
+
+One may observe that in Figure \ref{Fig:Cheb20} the interpolated polynomial converges to $f$. The convergence can be attained using Chebyshev points but not evenly spaced nodes. Since $f$ have two poles $ \pm \si $, result from the textbook is not applicable here. We give a proof to this convergence.
+
+We first explain the rationale to use Chebyshev points here. It is well known that there exists $ \xi \in \sbr{ -5, 5 } $ such that
+\begin{equation}
+p \rbr{x} - f \rbr{x} = \frac{1}{ \rbr{ n + 1 } ! } \prod_{ j = 0 }^n \rbr{ x - x_j } f^{\rbr{ n + 1 }} \rbr{\xi}.
+\end{equation}
+Hence, the error estimation is
+\begin{equation}
+\max_{\sbr{ -5, 5 }} \abs{ p - f } \le \frac{1}{ \rbr{ n + 1 } ! } \abs{ \prod_{ j = 0 }^n \rbr{ x - x_j } f^{\rbr{ n + 1 }} } M_{ n + 1 }
+\end{equation}
+where
+\begin{equation}
+M_j = \max_{\sbr{ -5, 5 }} \abs{f^{\rbr{j}}}.
+\end{equation}
+We have the freedom to select interpolation nodes then. From the results from best uniform approximation,
+\begin{equation}
+\min_{\sarr{c}{ q \in P_{ n + 1 } \\ q \text{monic} }} \max_{\sbr{ -1, 1 }} \abs{q} = \frac{1}{2^n}
+\end{equation}
+and the equality is attained when $ q = T_{ n + 1 } / 2^n $, where $T_n$ is the $n$-th Chebyshev polynomial. Hence,
+\begin{equation}
+\min_{\sbr{ -5, 5 }} \abs{ \prod_{ j = 0 }^n \rbr{ x - x_j } }
+\end{equation}
+is also attained when $x_j$ are the zeros of $ T_{ n + 1 } \rbr{ x / 5 } $, exactly the Chebyshev points of $ \sbr{ -5, 5 } $. In this case, we have
+\begin{equation}
+\abs{ \prod_{ j = 0 }^n \rbr{ x - x_j } } = \frac{1}{2^n}
+\end{equation}
+and
+\begin{equation}
+\max_{\sbr{ -5, 5 }} \abs{ p - f } \le \frac{1}{ \rbr{ n + 1 } ! 2^n }  M_{ n + 1 }.
+\end{equation}
+
+Let $ \alpha \in \sbr{ -5, 5 } $. Expand the Laurent series at $\alpha$, we obtain
+\begin{equation}
+\begin{split}
+\frac{1}{ 1 + z^2 } &= \frac{1}{ 1 + \alpha^2 + 2 \alpha \rbr{ z - \alpha } + \rbr{ z - \alpha }^2 } \\
+&= \frac{1}{ 1 + \alpha^2 } \sum_{ k = 0 }^{\infty} \rbr{-1}^k \rbr{ \frac{ 2 \alpha }{ 1 + \alpha^2 } \rbr{ z - \alpha } + \frac{1}{ 1 + \alpha^2 } \rbr{ z - \alpha }^2 }.
+\end{split}
+\end{equation}
+Denote
+\begin{gather}
+A = \frac{ 2 \alpha }{ 1 + \alpha^2 }, \\
+B = \frac{1}{ 1 + \alpha^2 },
+\end{gather}
+by binomial expansion we deduce
+\begin{equation}
+M_{ n + 1 } \le \frac{ \rbr{ n + 1 } ! }{ 1 + \alpha^2 } \sum_{ k \ge 0 } A^{ n + 1 - 2 k } B^k \binom{ n + 1 - k }{k} \le \rbr{ n + 1 } ! \sum_{ k \ge 0 } \binom{ n + 1 - k }{k}.
+\end{equation}
+For $ n \ge M $, we have
+\begin{equation}
+\begin{split}
+\sum_{ k \ge 0 } \binom{ n + 1 - k }{k} &\le \sum_{ 0 \le k < M } \binom{ n + 1 - k }{k} + \sum_{ k \ge M } \binom{  n + 1 - M }{k} \\
+&\le C_M + 2^{ n + 1 - M }
+\end{split}
+\end{equation}
+and therefore
+\begin{equation}
+\max_{ \sbr{ -5, 5 } } \abs{ p - f } \le \frac{C_M}{2^n} + \frac{1}{2^{ M - 1 }}.
+\end{equation}
+Therefore
+\begin{equation}
+\limsup \max_{ \sbr{ -5, 5 } } \abs{ p - f } \le \frac{1}{2^{ M - 1 }}
+\end{equation}
+for any $M$ and we further deduce
+\begin{equation}
+\lim \max_{ \sbr{ -5, 5 } } \abs{ p - f } = 0.
+\end{equation}
+
+We note that we do not give any estimation of convergence speed here. Actually, the convergence is very fast, as described in the following sub-section.
+
+\subsection{Interpolation error}
+
+We finally investigate the interpolate error. We consider the norm of $ p - f $ in the $L^1$, $L^2$ and $L^{\infty}$ sense. The values are approximated by composited trapezoid formula. The figure is given in Figure \ref{Fig:Err}. The vertical axis correspond to $n$ and the horizonal axies correspond to the norms of errors.
+
+\begin{figure}
+\centering
+\scalebox{0.7}{\input{Figure9.pgf}}
+\caption{Convergence of error}
+\label{Fig:Err}
+\end{figure}
+
+We can directly observe the $ O \rbr{ 1 / n^2 } $ convergence to piece-wise linear interpolation $ O \rbr{ 1 / n^4 } $ convergence to all three piece-wise cubic linear interpolation. This numerical results verifies the conclusion given in the textbook. The Lagrange interpolation using Chebyshev points converges in a asymptotic super-polynomial manner actually. There are no order difference with respect to the three norms.
 
 \end{document}

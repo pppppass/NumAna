@@ -2,6 +2,7 @@
 *.aux
 *.log
 *.thm
+*.run
 
 # Generated files
 *.synctex.gz
