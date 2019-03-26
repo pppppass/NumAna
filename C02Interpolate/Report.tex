@@ -97,7 +97,7 @@ where $ \Delta x_i = x_i - x_{ i - 1 } $. The corresponding dual basis or basis 
 \end{gather}
 Hence,
 \begin{equation}
-\hat{p}^i = y_i \hat{\phi}_1 + y_{ i + 1 } \hat{\phi}_2 + m_i \hat{\phi}_3 + m_{ i + 1 } \hat{\phi}_4
+\hat{p}^i = y_{ i - 1 } \hat{\phi}_1 + y_i \hat{\phi}_2 + m_{ i - 1 } \hat{\phi}_3 + m_i \hat{\phi}_4
 \end{equation}
 and
 \begin{equation}
@@ -162,7 +162,7 @@ All the algorithms are implemented in C. To be exact, the layout is
 \item \verb"intp/spl_cub.c": cubic spline interpolation;
 \item \verb"intp/utils.c": miscellaneous utility functions.
 \end{partlist}
-We write Python wrappers for C functions in \verb"intp/warppers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". In brief, {\color{red} we write C codes for computation and Python codes for visualization, which is suggested in the class}.
+We write Python wrappers for C functions in \verb"intp/warppers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". In brief, {\color{red} we write C codes for computation and Python codes for visualization, which is suggested in the class}. We use \verb"icc" instead of \verb"gcc" for the compiler by default.
 
 \subsection{Polynomial interpolation}
 

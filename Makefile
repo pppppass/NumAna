@@ -12,6 +12,12 @@ hardware.txt:
 	echo >> hardware.txt
 	echo '$ uname -a:' >> hardware.txt
 	uname -a | awk '$$2="********"' >> hardware.txt
+	echo >> hardware.txt
+	echo '$ gcc --version' >> hardware.txt
+	gcc --version >> hardware.txt
+	echo >> hardware.txt
+	echo '$ icc --version' >> hardware.txt
+	icc --version >> hardware.txt
 
 environment.yml:
 	conda env export | grep -v prefix > environment.yml
