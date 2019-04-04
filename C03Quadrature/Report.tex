@@ -16,7 +16,7 @@
 
 \maketitle
 
-\textbf{Problem (Page 108 Coding Exercise 7).} We implement composite midpoint, trapezoidal and Simpson quadrature, composite Romberg quadrature, Laguerre- and Legendre--Gauss quadrature for this project. We find the nodes and weights for Laguerre- and Legendre--Gauss quadrature by numerical linear algebra techniques. We conduct some analysis towards this methods, in terms of both precision and efficiency. We test the algorithm on two model problems, which all correspond to the integral of Plank. The details are described in the following sections.
+\textbf{Problem (Page 108 Coding Exercise 7).} We implement composite midpoint, trapezoidal and Simpson quadrature, composite Romberg quadrature, Laguerre-- and Legendre--Gauss quadrature for this project. We find the nodes and weights for Laguerre-- and Legendre--Gauss quadrature by numerical linear algebra techniques. We conduct some analysis towards this methods, in terms of both precision and efficiency. We test the algorithm on two model problems, which all correspond to the integral of Plank. The details are described in the following sections.
 
 \section{Problems}
 
@@ -400,7 +400,7 @@ We can see that composite midpoint, trapezoidal and Simpson quadratures all have
 
 In terms of efficiency, all but the Gauss quadratures enjoys an $ O \rbr{n} $ time complexity. The Gauss quadratures have $ O \rbr{n^2} $ for pre-processing and $ O \rbr{n} $ for integrals. When the deployment dominates, it will average out the $ O \rbr{n} $ for modest $n$. The Laguerre--Gauss quadrature behaves worse than Gegendre--Gauss probably because the eigenvalue problems of the symmetric tri-diagonal matrix is more easier to solve.
 
-If we both take precision and efficiency into consideration, the Legendre--Gauss quadrature is the best. The Gauss quadratures suffers from larger numerical errors for large $n$ because a eigenvalue problem gets involved. Composite Romberg quadrature with $ k = 2 $ is the second best.
+If we both take precision and efficiency into consideration, the Legendre--Gauss quadrature is the best. The Gauss quadratures suffer from larger numerical errors for large $n$ because a eigenvalue problem gets involved. Composite Romberg quadrature with $ k = 2 $ is the second best.
 
 \subsection{Integral of $g$}
 
@@ -450,7 +450,14 @@ g^{\rbr{3}} \rbr{0} \neq g^{\rbr{3}} \rbr{1}
 \end{gather}
 and therefore we should expect a fourth order convergence. For $g$, we make some truncation to the infinite interval. However, $ f' \rbr{100} $ is again very small and $ f' \rbr{0} = f' \rbr{100} $ is approximately satisfied. This explains the fourth order convergence.
 
-We may integrate over another interval, say $ \sbr{ a, b } = \sbr{ 2.5, 7.5 } $ in order to test the error of Romberg quadratures. We integrate $f$ on $ \sbr{ a, b } $ and the numerical results is shown in Figure \ref{Fig:Romb}.
+We may integrate over another interval, say $ \sbr{ a, b } = \sbr{ 2.5, 7.5 } $ in order to test the error of Romberg quadratures. We integrate $f$ on $ \sbr{ a, b } $ and the numerical results is shown in Figure \ref{Fig:Romb}. The analytical solution is obtained from the first 255 terms of
+\begin{equation}
+\int_a^b \frac{x^3}{ \se^x - 1 } \sd x = \sum_{ k = 1 }^{\infty} \int_a^b x^3 \se^{ -k x } \sd x = \sum_{ k = 1 }^{\infty} \frac{ p \rbr{ a k } - p \rbr{ b k } }{k^4}
+\end{equation}
+where
+\begin{equation}
+p \rbr{t} = \rbr{ t^3 + 3 t^2 + 6 t + 6 } \se^{-t}.
+\end{equation}
 
 \begin{figure}[htbp]
 \centering
@@ -472,7 +479,5 @@ For Gauss quadratures, we may apply it directly on the whole integral. This is b
 \frac{M_{ 2 n }}{ \rbr{ 2 n } ! } \rightarrow 0
 \end{equation}
 in a rather rapid speed. We can get super-polynomial convergence by adding nodes, as shown in the numerical results. If we decompose the interval into many sub-intervals and apply low-order Gauss quadratures on each sub-interval, we will lose the super-polynomial convergence. This is the normal case. However, if there are jumps and known discontinuities, we had better break the interval at such discontinuities.
-
-
 
 \end{document}
