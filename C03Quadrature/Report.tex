@@ -1,0 +1,478 @@
+%! TeX encoding = UTF-8
+%! TeX program = LuaLaTeX
+
+\documentclass[english, nochinese]{pnote}
+\usepackage[paper, cgu]{pdef}
+\usepackage{pgf}
+
+\DeclareMathOperator{\operr}{\mathrm{err}}
+\DeclareMathOperator{\opspan}{\mathrm{span}}
+
+\title{Report of Project of Chapter 3}
+\author{Zhihan Li, 1600010653}
+\date{April 4, 2019}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Problem (Page 108 Coding Exercise 7).} We implement composite midpoint, trapezoidal and Simpson quadrature, composite Romberg quadrature, Laguerre- and Legendre--Gauss quadrature for this project. We find the nodes and weights for Laguerre- and Legendre--Gauss quadrature by numerical linear algebra techniques. We conduct some analysis towards this methods, in terms of both precision and efficiency. We test the algorithm on two model problems, which all correspond to the integral of Plank. The details are described in the following sections.
+
+\section{Problems}
+
+\subsection{Model problems}
+
+We consider the following two problems. The first problem is to integrate
+\begin{equation}
+f \rbr{x} = \frac{x^3}{ \se^x - 1 }
+\end{equation}
+on $ \srbr{ 0, +\infty } $. However this involves infinite integrals, and thus we may consider the change of variable
+\begin{equation}
+y = \frac{1}{ 1 + x }
+\end{equation}
+which induces
+\begin{equation}
+\frac{x^3}{ \se^x - 1 } \sd x = - \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } } \sd y
+\end{equation}
+This means
+\begin{equation}
+\int_0^{+\infty} f \rbr{x} \sd x = \int_0^1 g \rbr{y} \sd y,
+\end{equation}
+where
+\begin{equation}
+g \rbr{y} = \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } }.
+\end{equation}
+This gives rise to the second problem, to integrate $ g \rbr{y} $ on $ \sbr{ 0, 1 } $.
+
+We note that both $f$ and $g$ has no singularity over their domains. Their graphs are given in Figure \ref{Fig:GraphF} and \ref{Fig:GraphG}.
+
+\begin{figure}[htbp]
+\centering
+\input{Figure1.pgf}
+\caption{Graph of $f$}
+\label{Fig:GraphF}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure2.pgf}
+\caption{Graph of $g$}
+\label{Fig:GraphG}
+\end{figure}
+
+\subsection{Analytical solution}
+
+We consider evaluating the integral
+\begin{equation}
+\int_0^{+\infty} \frac{x^3}{ \se^x - 1 } \sd x
+\end{equation}
+analytically. We note that in the point-wise sense we have
+\begin{equation}
+\frac{x^3}{ \se^x - 1 } = \sum_{ k = 1 }^{\infty} x^3 \se^{ -k x }.
+\end{equation}
+The monotone convergence theorem directly yields
+\begin{equation}
+\int_0^{+\infty} \frac{x^3}{ \se^x - 1 } = \sum_{ k = 1 }^{\infty} \int_0^{+\infty} x^3 \se^{ -k x } \sd x = \sum_{ k = 1 }^{+\infty} \frac{6}{k^4} = 6 \zeta \rbr{4} = \frac{\spi^4}{15} \approx 6.49394.
+\end{equation}
+
+\subsection{Evaluation of functions}
+
+\subsubsection{Evaluation of $f$}
+
+For normal $x$, we evaluate $f$ using
+\begin{equation} \label{Eq:EvalFNorm}
+f \rbr{x} = \frac{x^3}{ \se^x - 1 }
+\end{equation}
+
+When $ x \rightarrow 0^+ $, $ x^3, \se^x - 1 \rightarrow 0 $ and thus $f$ should be evaluated using
+\begin{equation} \label{Eq:EvalFApprox}
+f \rbr{x} \approx \frac{x^2}{\se^{ x / 2 }}
+\end{equation}
+
+We determine the applicable range of this approximation. Denote the machine precision to be $\epsilon$. Using \eqref{Eq:EvalFNorm}, between the exact value and the value yielded by floating point arithmetic can be estimated by
+\begin{gather}
+\operr \se^x \le \se^x \epsilon, \\
+\operr \rbr{ \se^x - 1 } \le 2 \se^x \epsilon, \\
+\operr x^3 \le x^3 \epsilon, \\
+\operr \frac{x^3}{ \se^x - 1 } \le \frac{3}{x} \frac{x^3}{ \se^x - 1 } \epsilon.
+\end{gather}
+While the estimation \eqref{Eq:EvalFApprox} can be controlled by
+\begin{equation}
+\abs{ \frac{x^2}{\se^{ x / 2 }} - \frac{x^3}{ \se^x - 1 } } \le \frac{x^2}{12} \frac{x^3}{ \se^x - 1 }.
+\end{equation}
+This means we should use the approximation when
+\begin{equation}
+\frac{x^2}{12} \le \frac{3}{x} \epsilon
+\end{equation}
+or approximately
+\begin{equation}
+x \le \sqrt[3]{ 36 \epsilon } \approx 3 \times 10^{-6}.
+\end{equation}
+The relative error is controlled by $ O (\sqrt[3]{\epsilon^2}) $ from this analysis.
+
+We need to further evaluate $ \se^x f \rbr{x} $ for Laguerre--Gauss quadrature. For large $x$, the expression \eqref{Eq:EvalFNorm} may underflow and $\se^x$ may overflow. We use
+\begin{equation}
+\se^x f \rbr{x} = \frac{x^3}{ 1 - \se^{-x} }
+\end{equation}
+instead for $ x \ge 50 $.
+
+\subsubsection{Evaluation of $g$}
+
+For normal $y$, we evaluate $g$ directly using
+\begin{equation} \label{Eq:EvalGNorm}
+g \rbr{y} = \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } }.
+\end{equation}
+
+When $ x \rightarrow 1^{-} $, $ 1 / y - 1, \se^{ 1 / y } - \se \rightarrow 0 $ and we have
+\begin{equation}
+g \rbr{y} \approx \frac{\rbr{ 1 / y - 1 }^2}{ y^2 \se^{ 1 / 2 y - 1 / 2 } }.
+\end{equation}
+Again we have
+\begin{equation}
+\operr \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } } \le \frac{3}{ 1 - y } \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } } \epsilon
+\end{equation}
+and
+\begin{equation}
+\abs{ \frac{\rbr{ 1 / y - 1 }^2}{ y^2 \se^{ 1 / 2 y - 1 / 2 } } - \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } } } \le \frac{\rbr{ 1 - y }^2}{12} \frac{ \rbr{ 1 / y - 1 }^3 \se }{ y^2 \rbr{ \se^{ 1 / y } - \se } }.
+\end{equation}
+This means when
+\begin{equation}
+1 - y \le \sqrt[3]{ 36 \epsilon } \approx 3 \times 10^{-6}
+\end{equation}
+such approximation is applicable.
+
+When $ y \rightarrow 0^+ $, the expression may overflow and this leads to an not a number error. We switch to
+\begin{equation}
+g \rbr{y} = \frac{ \rbr{ 1 - y }^3 \se }{ \se^{ \rbr{ 1 + 5 y \ln y } / y } - y^5 \se },
+\end{equation}
+when $ y \le 0.02 $, which is guaranteed to yield a correct answer owing to infinity arithmetic.
+
+\section{Algorithms}
+
+\subsection{Composite midpoint and trapezoidal quadrature}
+
+Consider we integrate a function $u$ on a closed interval $ I = \sbr{ a, b } $. We divide the interval to $n$ sub-intervals $ I_1, I_2, \cdots, I_n $ evenly and choose the midpoint as the representative for numerical quadrature. To be concise, the composite midpoint quadrature is given by
+\begin{equation}
+I_{\text{mid}} \rbr{ u; h } = h \sum_{ i = 1 }^n u \rbr{x_{ i - 1 / 2 }}
+\end{equation}
+where
+\begin{equation}
+h = \frac{ b - a }{n}
+\end{equation}
+is the step size and
+\begin{equation}
+x_{ i - 1 / 2 } = a + \rbr{ i - \frac{1}{2} } h
+\end{equation}
+with $ i = 1, 2, \cdots, n $ is the midpoint of $I_i$.
+
+The typical error estimation for sufficiently smooth $u$ (we will implicitly assume this in the following discussion) is
+\begin{equation}
+\abs{ I_{\text{mid}} \rbr{ u; h } - \int_a^b u \rbr{x} \sd x } \le \frac{1}{24} \rbr{ b - a } M_2 h^2
+\end{equation}
+
+The trapezoidal quadrature is given By
+\begin{equation}
+I_{\text{trap}} \rbr{ u; h } = h \sum_{ i = 1 }^n \rbr{ \frac{1}{2} u \rbr{x_{ i - 1 }} + \frac{1}{2} u \rbr{x_i} }
+\end{equation}
+where
+\begin{equation}
+x_i = a + i h 
+\end{equation}
+and $ I_i = \sbr{ x_{ i - 1 }, x_i } $ with $ i = 1, 2, \cdots, n $.
+
+The typical error estimation is given by
+\begin{equation}
+\abs{ I_{\text{trap}} \rbr{ u; h } - \int_a^b u \rbr{x} \sd x } \le \frac{1}{12} \rbr{ b - a } M_2 h^2.
+\end{equation}
+
+\subsection{Romberg quadrature}
+
+We may apply Richardson extrapolation to increase the convergence order. The $k$-th order composite Romberg quadrature $ I_{\text{Romb}} \rbr{ \cdot; h, k } $ is defined recursively as
+\begin{gather}
+I_{\text{Romb}} \rbr{ u; h, 0 } = I_{\text{trap}} \rbr{ u; h, 0 }, \\
+\label{Eq:RombRec}
+I_{\text{Romb}} \rbr{ u; h, k } = \frac{ 4^k I_{\text{Romb}} \rbr{ u; h / 2, k - 1 } - I_{\text{Romb}} \rbr{ u; h, k - 1 } }{ 4^k - 1 }.
+\end{gather}
+The asymptotic error estimation is given by
+\begin{equation}
+\abs{ I_{\text{Romb}} \rbr{ u; h, k } - \int_a^b u \rbr{x} \sd x } = O \rbr{h^{ 2 \rbr{ k + 1 }}}.
+\end{equation}
+
+When $ k = 1 $, this gives rise to the composite Simpson quadrature
+\begin{equation}
+I_{\text{Simp}} \rbr{ u; h } = I_{\text{Romb}} \rbr{ u; h, 1 } = h \sum_{ i = 1 }^n \rbr{ \frac{1}{6} u \rbr{x_{ i - 1 }} + \frac{2}{3} u \rbr{x_{ i - 1 / 2 }} + \frac{1}{6} u \rbr{x_i} }.
+\end{equation}
+
+\subsection{Gauss quadrature}
+
+Consider a region $I$ together with a positive weight function $\rho$ which has all finite moments. The weight function defines an inner product
+\begin{equation}
+\rbr{ u, v } = \frac{1}{Z} \int_I u \rbr{x} v \rbr{x} \rho \rbr{x} \sd x
+\end{equation}
+where
+\begin{equation}
+Z = \int_I \rho \rbr{x} \sd x
+\end{equation}
+is the normalization factor. We may apply Gram--Schmidt process to the Krylov subspace $ \opspan \cbr{ 1, x, x^2, \cdots, x^n } $ in $ P_n \rbr{I} $ generated by the map multiplying $x$, formally $ A \rbr{ p \rbr{x} } = x p \rbr{x} $, to get a set or orthogonal basis $ \cbr{ p_0 \rbr{x}, p_1 \rbr{x}, p_2 \rbr{x}, \cdots, p_n \rbr{x} } $.
+
+One may prove that the zeros of $ p_n \rbr{x} $, say $ x_1^n, x_2^n, \cdots, x_n^n $ are separately distributed in $I$. Hence, we may consider using them as nodes to construct a interpolating quadrature, namely the Newton--Cotes quadrature. Hence we have
+\begin{equation}
+I_{\text{Gauss}} \rbr{ u; n } = \sum_{ i = 1 }^n w_i^n u \rbr{x_i^n},
+\end{equation}
+where
+\begin{equation}
+w_i^n = \int_I \prod_{\sarr{c}{ j = 1 \\ j \neq i }}^n \frac{ x - x_j }{ x_i - x_j } \rho \rbr{x} \sd x.
+\end{equation}
+Newton--Cotes quadrature itself is not stable if we use evenly spaced nodes, but Gauss quadrature is generally stable because one may prove $ w_i^n > 0 $.
+
+To be exact, when $ I = \sbr{ a, b } $ and $ \rho \rbr{x} \equiv 1 $, we obtain the Legendre--Gauss quadrature $ I_{\text{Lege}} \rbr{ \cdot; n } $, with $ p_n \rbr{x} = \textit{Le}_n \rbr{x} $ is the $n$-th Legendre polynomial. When $ I = \srbr{ 0, +\infty } $ and $ \rho \rbr{x} = \se^{-x} $, we obtain the Laguerre--Gauss quadrature $ I_{\text{Lagu}} \rbr{ \cdot; n } $, with $ p_n \rbr{x} = \textit{La}_n \rbr{x} $ is the $n$-th Laguerre polynomial.
+
+The error estimation is
+\begin{equation} \label{Eq:GaussEst}
+\abs{ I_{\text{Gauss}} \rbr{ u; n } - \int_a^b u \rbr{x} \rho \rbr{x} \sd x } \le \frac{M_{ 2 n }}{ \rbr{ 2 n } ! }
+\end{equation}
+
+\section{Implementation}
+
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"quad/mid.c": composite midpoint quadrature;
+\item \verb"quad/trap.c": composite trapezoidal quadrature;
+\item \verb"quad/simp.c": composite Simpson quadrature;
+\item \verb"quad/romb.c": composite Romberg quadrature;
+\item \verb"quad/lagu.c": Laguerre quadrature;
+\item \verb"quad/lege.c": Legendre quadrature;
+\end{partlist}
+We write Python wrappers for C functions in \verb"quad/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default.
+
+\subsection{Romberg quadrature}
+
+The Romberg quadrature stems from Richardson extrapolation, which is highly sensitive to numerical rounding error. To alleviate this problem, we consider to convert the recursive extrapolation \eqref{Eq:RombRec} to weighted sums to avoid subtraction.
+
+The Romberg quadrature $ I_{\text{Romb}} \rbr{ \cdot; h, k } $ actually requests $ 2^k n + 1 $ evaluations of the function $u$. Denotes the nodes to be
+\begin{equation}
+x_i^0 = a + i h
+\end{equation}
+for $ i = 0, 1, 2, \cdots, n $
+and the nodes
+\begin{equation}
+x_i^j = a + \frac{ 2 i - 1 }{2^j} h
+\end{equation}
+for $ i = 1, 2, \cdots, 2^{ j - 1 } n $. From the recursion, if we set $ \sbr{ a, b } = \rbr{ 0, 1 } $,
+\begin{equation}
+I_{\text{Romb}} \rbr{ u; 1, k } = \frac{a_0^k}{2} \rbr{ u \rbr{x_0^0} + u \rbr{x_1^0} } + \sum_{ j = 1 }^k a_j^k \rbr{ \sum_{ i = 1 }^{2^{ j - 1 }} u \rbr{x_i^j} }.
+\end{equation}
+Denote
+\begin{equation}
+q_k \rbr{x} = \sum_{ j = 0 }^k a_j^k x^j
+\end{equation}
+to be the generator function of $a_j^k$. The recursive relation turns out to be
+\begin{gather}
+q_0 \rbr{x} = 1, \\
+q_k \rbr{x} = \frac{ \rbr{ 2 \cdot 4^{ k - 1 } x - 1 } q_{ k - 1 } \rbr{x} + 2 \cdot 4^{ k - 1 } q_{ k - 1 } \rbr{0} }{ 4^k - 1 }.
+\end{gather}
+Hence, calculating this coefficients only needs $ O \rbr{k} $ time complexity. We can even prove that $ a_j^k \ge 0 $ from this recursion. Leveraging $a_j^k$, we can directly calculate
+\begin{equation}
+I_{\text{Romb}} \rbr{ u; h, k } = h \rbr{ a_0^k \sum_{ i = 1 }^n \rbr{ \frac{1}{2} u \rbr{x_{ i - 1 }^0} + \frac{1}{2} u \rbr{x_i^0} } + \sum_{ j = 1 }^k a_j^k \rbr{ \sum_{ i = 1 }^{ 2^{ j - 1 } n } u \rbr{x_i^j} } }
+\end{equation}
+This is more stable than direct extrapolation.
+
+\subsection{Gauss quadrature}
+
+The key problem to the calculation of Gauss quadratures lies in finding the zeros $x_i^n$ and the weights $w_i^n$. Although for small $n$ we may look up the values on handbooks and recipes, we manually implement a systematical way to carry out those values.
+
+We first revise the recursion relation ship of the orthogonal polynomials. The Gram--Schmidt process offers us the Arnoldi relation
+\begin{equation}
+A P_{ n - 1 } \rbr{x} = P_n \rbr{x} \tilde{H}_n,
+\end{equation}
+where
+\begin{equation}
+P_n \rbr{x} = \msbr{ p_0 \rbr{x} & p_1 \rbr{x} & p_2 \rbr{x} & \cdots & p_n \rbr{x} }
+\end{equation}
+is a row vector of polynomials and $\tilde{H}_n$ is a $ \rbr{ n + 1 } \times n $ upper Hessenberg matrix. Note that $A$ is a self-adjoint operator with respect to the inner product $ \rbr{ \cdot, \cdot } $ and $ P_n \rbr{x} $ consists of a set of orthonormal polynomials, we obtain $H_n$, the first $n$ rows of $\tilde{H}$ can be given by
+\begin{equation}
+\rbr{ P_{ n - 1 } \rbr{x}, A P_{ n - 1 } \rbr{x} } = \rbr{ P_{ n - 1 } \rbr{x}, P_n \rbr{x} } \tilde{H}_n = H_n,
+\end{equation}
+which satisfies
+\begin{equation}
+H_n^{\text{T}} = \rbr{ A P_{ n - 1 } \rbr{x}, P_{ n - 1 } \rbr{x} } = \rbr{ P_{ n - 1 } \rbr{x}, A P_{ n - 1 } \rbr{x} } = H_n.
+\end{equation}
+Hence, $H_n$ is a tri-diagonal matrix and we may assume
+\begin{equation}
+H_n = \msbr{ \delta_1 & \gamma_2 & & & & \\ \gamma_2 & \delta_2 & \gamma_3 & & & \\ & \gamma_3 & \delta_3 & \ddots & & \\ & & \ddots & \ddots & \ddots & \\ & & & \ddots & \delta_{ n - 1 } & \gamma_n \\ & & & & \gamma_n & \delta_n }.
+\end{equation}
+Plugging the matrix form of $A$ into the Arnoldi relation,
+\begin{equation}
+P_n \rbr{x} \rbr{ \tilde{H}_n - x I } = 0,
+\end{equation}
+we immediately obtain
+\begin{equation}
+p_n \rbr{x} = \rbr{ x - \delta_n } p_{ n - 1 } \rbr{x} - \gamma_n^2 p_{ n - 2 } \rbr{x}.
+\end{equation}
+
+Now take $x_i^n$ as the zeros of $ p_n \rbr{x} $, we obtain
+\begin{equation}
+P_{ n - 1 } \rbr{x_i^n} \rbr{ H_n - x_i^n I } = 0.
+\end{equation}
+Hence, $x_i^n$ are eigenvalues of $H_n$, with the eigenvector $ P_n \rbr{ n - 1 } \rbr{x_i^n} $. Hence, the row vectors $ P_n \rbr{ n - 1 } \rbr{x_i^n} $ for $ i = 1, 2, \cdots, n $ are orthogonal to each other.
+Note that
+\begin{equation}
+P W = e_1,
+\end{equation}
+where
+\begin{equation}
+P = \msbr{ P_{ n - 1 }^{\text{T}} \rbr{x_1^n} & P_{ n - 1 }^{\text{T}} \rbr{x_2^n} & \cdots & P_{ n - 1 }^{\text{T}} }
+\end{equation}
+is the matrix of eigenvectors,
+\begin{equation}
+W = \msbr{ w_1^n & w_2^n & \cdots & w_n^n }^{\text{T}}
+\end{equation}
+is the column vector of weights and
+\begin{equation}
+e_1 = \msbr{ 1 & 0 & 0 & \cdots & 0 }.
+\end{equation}
+This implies
+\begin{equation}
+P^{\text{T}} P W = P^{\text{T}} e_1,
+\end{equation}
+\begin{equation}
+w_i^n = \frac{1}{\norm{ P_{ n - 1 } \rbr{x_i^n} }_2^2}.
+\end{equation}
+
+Hence, the nodes $x_i^n$ and weights $w_i^n$ can all be carried out in $ O \rbr{n^2} $ time, by using shifted QR method and accumulation. We directly invoke \verb"dstev" routine in LAPACK to solve the eigenvalue problem.
+
+For different sets of orthogonal polynomials, there are possibly faster approaches to the weights, which we will introduced in the following text. This is the actually used version in our implementation.
+
+The Legendre polynomial $ \mathit{Le}_n \rbr{x} $ on $ \sbr{ -1, 1 } $ satisfies the recursion relation
+\begin{gather}
+\mathit{Le}_0 \rbr{x} = 1, \\
+\mathit{Le}_1 \rbr{x} = x, \\
+\mathit{Le}_n \rbr{x} = \frac{ 2 n - 1 }{n} x \mathit{Le}_{ n - 1 } \rbr{x} - \frac{ n - 1 }{n} \mathit{Le}_{ n - 2 } \rbr{x}.
+\end{gather}
+The weights can be more explicitly written as
+\begin{equation}
+w_i^n = \frac{ 1 - x_i^2 }{ n^2 \mathit{Le}_{ n - 1 } \rbr{x_i^n}^2 }.
+\end{equation}
+
+The Laguerre polynomial $ \mathit{La}_n \rbr{x} $ satisfies the recursion relation
+\begin{gather}
+\mathit{La}_0 \rbr{x} = 1, \\
+\mathit{La}_1 \rbr{x} = 1 - x, \\
+\mathit{La}_n \rbr{x} = \rbr{ 2 n - 1 - x } \mathit{La}_{ n - 1 } \rbr{x} - \rbr{ n - 1 }^2 \mathit{La}_{ n - 2 } \rbr{x}.
+\end{gather}
+The weights can be more explicitly written as
+\begin{equation}
+w_i^n = \frac{ \Gamma \rbr{ n + 1 }^2 x_i^n }{ \mathit{La}_{ n + 1 } \rbr{x_i^n}^2 }.
+\end{equation}
+
+\section{Numerical results}
+
+\subsection{Integral of $f$}
+
+Since
+\begin{equation}
+\int_{100}^{+\infty} f \rbr{x} \sd x \le 2 \int_{100}^{+\infty} x^3 \se^{-x} \sd x \le 2 \int_{100}^{+\infty} \se^{ -4 x / 5 } \sd x \le \epsilon,
+\end{equation}
+we may use composite midpoint, trapezoidal and Simpson quadrature, together with composite Romberg quadrature to integrate $f$ on $ \sbr{ a, b } = \sbr{ 0, 100 } $. We also apply Laguerre--Gauss quadrature on $ \srbr{ 0, +\infty } $ and Legendre--Gauss quadrature on $ \sbr{ a, b } = \sbr{ 0, 100 } $. The numerical results are shown in Figure \ref{Fig:FError}, \ref{Fig:FTime} and \ref{Fig:FErrorTime}. The running time is averaged on 100 runs, and one single run of pre-processing is included.
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure3.pgf}}
+\caption{Convergence of error of quadrature integrating $f$}
+\label{Fig:FError}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure4.pgf}}
+\caption{Comparison of running time of quadrature integrating $f$}
+\label{Fig:FTime}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure5.pgf}}
+\caption{Comparison of precision and efficiency of quadrature integrating $f$}
+\label{Fig:FErrorTime}
+\end{figure}
+
+We can see that composite midpoint, trapezoidal and Simpson quadratures all have fourth order convergence, which is better than estimated. The convergence profile of higher order composite quadratures cannot be exactly extracted, but they generally converge faster. For $ k \ge 2 $, increasing $k$ does not lead to better convergence, which is caused by the rounding error and approximation error. We may observe the super-polynomial convergence of two quadratures. The Laguerre--Gauss quadrature is better than Legendre--Gauss quadrature generally speaking.
+
+In terms of efficiency, all but the Gauss quadratures enjoys an $ O \rbr{n} $ time complexity. The Gauss quadratures have $ O \rbr{n^2} $ for pre-processing and $ O \rbr{n} $ for integrals. When the deployment dominates, it will average out the $ O \rbr{n} $ for modest $n$. The Laguerre--Gauss quadrature behaves worse than Gegendre--Gauss probably because the eigenvalue problems of the symmetric tri-diagonal matrix is more easier to solve.
+
+If we both take precision and efficiency into consideration, the Legendre--Gauss quadrature is the best. The Gauss quadratures suffers from larger numerical errors for large $n$ because a eigenvalue problem gets involved. Composite Romberg quadrature with $ k = 2 $ is the second best.
+
+\subsection{Integral of $g$}
+
+We apply composite midpoint, trapezoidal and Simpson quadrature, together with composite Romberg quadrature and Legendre--Gauss quadrature to integrate $g$ on $ \sbr{ a, b } = \sbr{ 0, 1 } $. The numerical results are shown in Figure \ref{Fig:GError}, \ref{Fig:GTime} and \ref{Fig:GErrorTime}. The running time is averaged on 100 runs, and one single run of pre-processing is included.
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure6.pgf}}
+\caption{Convergence of error of quadrature integrating $g$}
+\label{Fig:GError}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure7.pgf}}
+\caption{Comparison of running time of quadrature integrating $g$}
+\label{Fig:GTime}
+\end{figure}
+
+\begin{figure}
+\centering
+\scalebox{0.70}{\input{Figure8.pgf}}
+\caption{Comparison of precision and efficiency of quadrature integrating $g$}
+\label{Fig:GErrorTime}
+\end{figure}
+
+The numerical results are very much similar to that of $g$. The main difference is the strange convergence profile of composite midpoint, trapezoidal and Simpson quadratures.
+
+In terms of the combination of precision and efficiency, the Legendre--Gauss quadrature is the best. One may observe that the higher order Romberg quadratures actually convergence slower (in the temporal sense) when $k$ increases.
+
+\section{Discussion}
+
+\subsection{High-order convergence}
+
+We may observe that the the convergence order of composite midpoint and trapezoidal quadratures are all four in either integrals of $f$ and $g$. This is because $f$ and $g$ has additional continuity at the end points of the integration intervals. According to Euler--Maclaurin formula, if $ u \in C^m \sbr{ a, b } $,
+\begin{equation} \label{Eq:EulerMac}
+\begin{split}
+&\ptrel{=} \int_{\text{trap}} \rbr{ u; h } - \int_a^b u \rbr{x} \sd x \\
+&= \sum_{ j = 1 }^{\fbr{ m / 2 }} \frac{ b_{ 2 j } h^{ 2 j } }{ \rbr{ 2 j } ! } \rbr{ u^{\rbr{ 2 j - 1 }} \rbr{b} - u^{\rbr{ 2 j - 1 }} \rbr{a} } \\
+&- \rbr{-1}^m h^m \int_a^b \tilde{B}_m \rbr{\frac{ x - a }{h}} u^{\rbr{m}} \rbr{x} \sd x.
+\end{split}
+\end{equation}
+Hence if $ u' \rbr{a} = u' \rbr{b} $ is satisfied, the trapezoidal quadrature yield a fourth order convergence. To be exact, $g$ exactly satisfies
+\begin{gather}
+g' \rbr{0} = g' \rbr{1}, \\
+g^{\rbr{3}} \rbr{0} \neq g^{\rbr{3}} \rbr{1}
+\end{gather}
+and therefore we should expect a fourth order convergence. For $g$, we make some truncation to the infinite interval. However, $ f' \rbr{100} $ is again very small and $ f' \rbr{0} = f' \rbr{100} $ is approximately satisfied. This explains the fourth order convergence.
+
+We may integrate over another interval, say $ \sbr{ a, b } = \sbr{ 2.5, 7.5 } $ in order to test the error of Romberg quadratures. We integrate $f$ on $ \sbr{ a, b } $ and the numerical results is shown in Figure \ref{Fig:Romb}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.70}{\input{Figure9.pgf}}
+\caption{Error of quadrature of $f$ on $ \sbr{ 2.5, 7.5 } $}
+\label{Fig:Romb}
+\end{figure}
+
+This time $ f' \rbr{a} = f' \rbr{b} $ is no longer satisfied, and we observe clear $ 2 \rbr{ k + 1 } $-th order convergence to the $k$-th order composite Romberg quadrature $ I_{\text{Romb}} \rbr{ \cdot; h, k } $.
+
+\subsection{Composite Romberg and Gauss quadrature}
+
+Romberg quadratures and Gauss quadratures introduces two different methods to approximate the integral on a single interval, which are parallel to the widely used composite method. So here comes the question: should we apply composite quadratures, or should we apply these two methods directly on the whole interval?
+
+For Romberg quadrature, we argue we should use composite Romberg quadrature. This is because the Euler--Maclaurin formula \eqref{Eq:EulerMac} heavily relies on $h$ and the residue is of order $ O \rbr{ 2 k } $ only asymptotically. For large $h$, the high order terms may dominates the residue if it carries a heavy coefficient. This means for large $h$ the extrapolation is likely to fail. Hence, we should use composite Romberg quadrature with small $h$ and small $k$.
+
+For Gauss quadratures, we may apply it directly on the whole integral. This is because for most smooth functions we have the estimated error \ref{Eq:GaussEst}
+\begin{equation}
+\frac{M_{ 2 n }}{ \rbr{ 2 n } ! } \rightarrow 0
+\end{equation}
+in a rather rapid speed. We can get super-polynomial convergence by adding nodes, as shown in the numerical results. If we decompose the interval into many sub-intervals and apply low-order Gauss quadratures on each sub-interval, we will lose the super-polynomial convergence. This is the normal case. However, if there are jumps and known discontinuities, we had better break the interval at such discontinuities.
+
+
+
+\end{document}
