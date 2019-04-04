@@ -1,6 +1,9 @@
 #include "intp.h"
 
-// Brute force expansion to Lagrange expansion
+//  x_node, y_node:
+//      [0:n+1]
+//  x_req, y_req <OUT>:
+//      [0:m]
 void intp_lagr(int num_node, const double* x_node, const double* y_node, int num_req, const double* x_req, double* y_req)
 {
     int n = num_node, m = num_req;

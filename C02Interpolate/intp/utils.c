@@ -26,7 +26,9 @@ double coor_node_unif(const int num_node, const double x_low, const double x_hig
     return x;
 }
 
-// No C++-style lower_bound in C, so write one
+//  Imitation of std::lower_bound in C++
+//  arr:
+//      [0:n]
 int d_lower_bound(const int len, const double* arr, const double val)
 {
     int n = len;
@@ -49,6 +51,8 @@ double cvrt_ref(const double x_low, const double x_high, const double x)
     return x_ref;
 }
 
+//  x_node:
+//      [0:n]: always provide [0:n+1]
 int index_intv_bis(const int num_node, const double* x_node, const double x)
 {
     int n = num_node;

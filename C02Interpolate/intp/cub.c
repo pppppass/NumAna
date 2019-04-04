@@ -9,6 +9,10 @@ double intp_cub_ref(double y_0, double y_1, double d_y_0, double d_y_1, double x
         + d_y_1 * x * x * (x - 1.0);
 }
 
+//  x_node, y_node, d_y_node:
+//      [0:n+1]
+//  x_req, y_req <OUT>:
+//      [0:m]
 void intp_cub(int num_node, const double* x_node, const double* y_node, const double* d_y_node, int num_req, const double* x_req, double* y_req)
 {
     int n = num_node, m = num_req;

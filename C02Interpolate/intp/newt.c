@@ -1,5 +1,7 @@
 #include "intp.h"
 
+//  x_node, y_node, coef <OUT>:
+//      [0:n+1]
 void calc_newt_arr(int num_node, const double* x_node, const double* y_node, double* coef)
 {
     int n = num_node;
@@ -13,6 +15,10 @@ void calc_newt_arr(int num_node, const double* x_node, const double* y_node, dou
     return ;
 }
 
+//  x_node, coef:
+//      [0:n+1]
+//  x_req, y_req <OUT>:
+//      [0:m]
 void intp_newt(int num_node, const double* x_node, const double* coef, int num_req, const double* x_req, double* y_req)
 {
     int n = num_node, m = num_req;

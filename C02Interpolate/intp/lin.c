@@ -7,6 +7,10 @@ double intp_lin_ref(double y_0, double y_1, double x)
         + y_1 * x;
 }
 
+//  y_node:
+//      [0:n+1]
+//  x_req, y_req <OUT>:
+//      [0:m]
 void intp_lin_unif(int num_node, double x_low, double x_high, const double* y_node, int num_req, const double* x_req, double* y_req)
 {
     int n = num_node, m = num_req;
@@ -22,6 +26,11 @@ void intp_lin_unif(int num_node, double x_low, double x_high, const double* y_no
     return ;
 }
 
+//  x_node, y_node:
+//      [0:n+1]:
+//          x_node: strictly increasing
+//  x_req, y_req <OUT>:
+//      [0:m]
 void intp_lin(int num_node, const double* x_node, const double* y_node, int num_req, const double* x_req, double* y_req)
 {
     int n = num_node, m = num_req;
