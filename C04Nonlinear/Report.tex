@@ -1,0 +1,359 @@
+%! TeX encoding = UTF-8
+%! TeX program = LuaLaTeX
+
+\documentclass[english, nochinese]{pnote}
+\usepackage[paper, cgu]{pdef}
+\usepackage{pgf}
+\usepackage{caption}
+
+\DeclareMathOperator{\ope}{\mathrm{E}}
+
+\title{Report of Project of Chapter 4}
+\author{Zhihan Li, 1600010653}
+\date{April 18, 2019}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Problem (Page 133 Coding Exercise 6).} We consider the Gaussian cubature on simplexes, and use non-linear solvers and optimizers to tackle the constraints given by exactness of polynomials. We use the Newton's method to solve the linear system directly if the degree of freedom and the number of constraints match, or otherwise cast the problem into a sum of squares problems and apply Nesterov accelerated projection gradient method. We calculate the cubatures numerically, and then analytically consider some cubatures inspired by symmetry and the numerical results.
+
+\section{Problem formulation}
+
+\subsection{Gaussian cubature}
+
+Given the a $M$-simplex $S$ in $\mathbb{R}^M$ with vertices $\mathbf{v}_t$ for $ t = 0, 1, 2, \cdots, M $, we consider the Gaussian cubature on $S$. Generally speaking, a cubature consists of $n$ points $\mathbf{x}_t$ with weights $w_t$ for $ t = 1, 2, \cdots, N $ and calculate
+\begin{equation}
+I \rbr{f} = \sum_{ t = 1 }^N w_t f \rbr{\mathbf{x}_t}
+\end{equation}
+to approximate
+\begin{equation}
+\int_S f \rbr{\mathbf{x}} \sd \mathbf{x}.
+\end{equation}
+A Gaussian cubature of algebraic degree $D$ is a cubature exact on $ P_D \rbr{S} $, or say
+\begin{equation} \label{Eq:Cons}
+I \rbr{ \mathbf{x} \mapsto \prod_{ t = 1 }^M x_t^{i_t} } = \int_S \prod_{ t = 1 }^M x_t^{i_t} \sd \mathbf{x}
+\end{equation}
+for $ i_t \ge 0 $, $ \sum_{ t = 1 }^M i_t = D $. Here we denote $ \mathbf{x} = \rbr{ x_1, x_2, \cdots, x_M } $. One prominent problem is to determine the minimal $n$.
+
+\subsection{Reference simplex}
+
+We consider the problem on the reference $m$-simplex $\hat{S}$, which has vertices $ \hat{\mathbf{v}}_0 = 0 $, $ \hat{\mathbf{v}}_t = \mathbf{e}_t $ for $ t = 1, 2, \cdots, M $. Here $\mathbf{e}_t$ is the standard basis of $\mathbb{R}^M$. By matching the vertices, we have the affine map
+\begin{equation}
+T : \hat{S} \rightarrow S, \hat{\mathbf{x}} \mapsto \mathbf{v}_0 + \sum_{ t = 1 }^M x_t \rbr{ \mathbf{v}_t - \mathbf{v}_0 }.
+\end{equation}
+Hence, if we have already obtain a cubature on $\hat{S}$, say $\hat{I}$, we may calculate
+\begin{equation}
+I \rbr{f} = \rbr{ \nabla T } \hat{I} \rbr{\hat{f}}.
+\end{equation}
+Where $ \hat{f} = T^{\text{t}} \rbr{f} = f \circ T $. Note that $T^{\text{t}}$ is a bijection between $ P_D \rbr{S} $ and $ P_D (\hat{S}) $. This implies that if $\hat{I}$ is a Gaussian cubature of algebraic degree $D$ on $ P_D (\hat{S}) $, we immediately obtain $I$ is again a Gaussian cubature of algebraic degree $D$. This process is totally reversible, and therefore we only need to tackle the Gaussian cubature on the reference simplex $\hat{S}$.
+
+On the reference simplex, it is much easier to check the constraints. We introduce 
+Since
+\begin{equation}
+c_{ i_1, i_2, \cdots, i_M } = \int_{\hat{S}} \prod_{ r = 1 }^M x_t^{i_t} \sd \mathbf{x} = \bfrac{ \prod_{ t = 1 }^M \Gamma \rbr{ i_t + 1 } }{ \Gamma \rbr{ \sum_{ t = 1 }^M i_t + M + 1 } },
+\end{equation}
+we denote $ \pbr{ i_1, i_2, \cdots, i_M } $ to be the constraint \eqref{Eq:Cons}
+\begin{equation}
+f_{ i_1, i_2, \cdots, i_M } \rbr{ \mathbf{x}_{\cdot}, w_{\cdot} } = c_{ i_1, i_2, \cdots, i_M } - \sum_{ t = 1 }^N w_t \prod_{ r = 1 }^M x_t^{i_t} = 0.
+\end{equation}
+Moreover, we group the weights to decrease the degree of freedom. Arrange the $N$ nodes into $C$ groups by indices $ c_t \in \cbr{ 1, 2, \cdots, C } $ for $ t = 1, 2, \cdots, N $. The groups can be abbreviated as $ \sbr{ c_1, c_2, \cdots, c_N } $. We then enforce
+\begin{equation}
+w_t = u_{c_t}.
+\end{equation}
+By this mean, we only need to solve $\mathbf{x}_{\cdot}$ and $u_{\cdot}$ out of the constraints
+\begin{equation}
+f_{i_{\cdot}} \rbr{ \mathbf{x}_{\cdot}, u_{\cdot} } = f_{i_{\cdot}} \rbr{ \mathbf{x}_{\cdot}, u_{c_{\cdot}} } = 0.
+\end{equation}
+
+Denote we enforce $L$ constraints $ i^1_{\cdot}, i^2_{\cdot}, \cdots, i^L_{\cdot} $. Since the basis of $ P_D (\hat{K}) $ is $ \mathcal{I}_D = \cbr{ i_{\cdot} : i_t \ge 0, \sum_{ t = 1 }^M i_t \le D } $, to impose the exactness over $ P_D (\hat{K}) $, we have at least
+\begin{equation}
+\cbr{i^{\cdot}_{\cdot}} \subseteq \mathcal{I}_D.
+\end{equation}
+This implies the number of constraints
+\begin{equation}
+L \ge \binom{ D + M }{M}.
+\end{equation}
+We have
+\begin{equation}
+1 \le C \le N,
+\end{equation}
+and therefore the total degree of freedom is
+\begin{equation}
+N M + 1 \le N M + C \le \rbr{ N + 1 } M.
+\end{equation}
+
+\section{Solvers}
+
+\subsection{Newton's method}
+
+When the number of constraints and the total degree of freedom match, say $ L = N M + C $ we may directly use the Newtons method to solve this problem. We iterate $\mathbf{x}_{\cdot}$ and $u_{\cdot}$ under the constraints $f_{i_{\cdot}^{\cdot}}$. The iterations of Newton's method is given by
+\begin{equation} 
+\msbr{ \mathbf{x}_{\cdot}^{\rbr{ s + 1 }} \\ u_{\cdot}^{\rbr{ s + 1 }} } = \msbr{ \mathbf{x}_{\cdot}^{\rbr{s}} \\ u_{\cdot}^{\rbr{s}} }  - \rbr{ \nabla f_{i_{\cdot}^{\cdot}} \rbr{ \mathbf{x}_{\cdot}^{\rbr{s}}, u_{\cdot}^{\rbr{s}} } }^{-1} f_{i_{\cdot}^{\cdot}} \rbr{ \mathbf{x}_{\cdot}^{\rbr{s}}, u_{\cdot}^{\rbr{s}} }.
+\end{equation}
+Here the matrix inverse involves only a matrix of size $ L \times \rbr{ N M + C } $ which is rather small. Hence, we does not bother to consider Broyden's method.
+
+We abbreviate the process with $K$ steps of iterations to be $ \text{N} \rbr{K} $.
+
+\subsection{Nesterov accelerated projection gradient method}
+
+When $ L \ge N M + C $, the system is underdetermined and we may find many solutions. If we want find only one point in the solution set, Newton's method is not much applicable. Hence, we consider the sum of squares problem
+\begin{equation}
+F \rbr{ \mathbf{x}_{\cdot}, u_{\cdot} } = \frac{1}{2} \sum_{ t = 1 }^L f_{i_{\cdot}^t}^2 \rbr{ \mathbf{x}_{\cdot}, u_{\cdot} }
+\end{equation}
+and perform optimization techniques on $F$. We have tested Newton's method on this problem, but it always gets stuck at local maximizers because of the complex landscape of $F$. Hence, we head to use first order methods. One popular choice is Nesterov accelerated gradient method. The iteration process is described as follows. Given $\mathbf{x}_{\cdot}^{\rbr{0}} $ and $u_{\cdot}^{\rbr{0}}$ as initial values, and we set $ \mathbf{x}_{\cdot}^{\rbr{-1}} = \mathbf{x}_{\cdot}^{\rbr{0}} $, $ u_{\cdot}^{\rbr{-1}} = u_{\cdot}^{\rbr{0}} $. The iterations with step size $\eta$ is given by
+\begin{gather}
+\msbr{ \mathbf{x}_{\cdot}^{\rbr{ s + 1 / 2 }} \\ u_{\cdot}^{\rbr{ s + 1 / 2 }} } = \msbr{ \mathbf{x}_{\cdot}^{\rbr{s}} \\ u_{\cdot}^{\rbr{s}} }  + \frac{ s - 1 }{ s + 2 } \rbr{ \msbr{ \mathbf{x}_{\cdot}^{\rbr{s}} \\ u_{\cdot}^{\rbr{s}} } - \msbr{ \mathbf{x}_{\cdot}^{\rbr{ s - 1 }} \\ u_{\cdot}^{\rbr{ s - 1 }} } }, \\
+\msbr{ \mathbf{x}_{\cdot}^{\rbr{ s + 1 / 2 }} \\ u_{\cdot}^{\rbr{ s + 1 / 2 }} } = P \rbr{ \msbr{ \mathbf{x}_{\cdot}^{\rbr{ s + 1 / 2 }} \\ u_{\cdot}^{\rbr{ s + 1 / 2 }} } - \eta \nabla F \rbr{\msbr{ \mathbf{x}_{\cdot}^{\rbr{ s + 1 / 2 }} \\ u_{\cdot}^{\rbr{ s + 1 / 2 }} }} }.
+\end{gather}
+Here $P$ is a projection operator on the admissible set, which we choose to be $ S^N \times \rbr{\mathbb{R}^{+0}}^C $ here. We constrain $ \mathbf{x}_{\cdot} \in S $ to avoid extrapolation, and $ u_{\cdot} \in \mathbb{R}^{+0} $ to keep numerical stability. We use \emph{orthogonal} projection here.
+
+We abbreviate the process with $K$ steps of iterations to be $ \text{FPG} \rbr{ K, \eta } $.
+
+In many cases, the Newton's method has only local convergence. This means for randomized initial values, the Newton's method can diverge in most cases. We solve the problem by applying the accelerated gradient method and the Newton's method sequentially, denoted by $ \text{FPG} \rbr{ K_1, \eta } + \text{N} \rbr{K_2} $.
+
+\section{Numerical results}
+
+In the following numerical experiments, we always initialize by $ \mathbf{x}_{\cdot} \sim \mathcal{N} \rbr{ \mathbf{1} / \rbr{ M + 1 }, 10^{-4} \mathbf{I} } $ and $ u_{\cdot} \sim U \rbr{ 0, 2 / M N } $. Note that $ \mathbf{1} / \rbr{ M + 1 } $ is the barycenter of $\hat{S}$, and $ \ope \sum_{ t = 1 }^N u_{c_t} = 1 / M ! $ corresponds to volume of $\hat{S}$.
+
+\subsection{The two-dimensional case}
+
+Here $ M = 2 $. We take the notation $ \mathbf{x} = \rbr{ x, y } $.
+
+\subsubsection{The case $ D = 1 $}
+
+The case $ D = 1 $ can be analytically computed. By using $\mathcal{I}_1$ as constraints, we have $ L = 3 $ and we take $ N = 1 $. The only choice for groups is $\sbr{1}$ with $ C = 1 $. The equations turns out to be
+\begin{gather}
+w_1 = 1 / 2, \\
+w_1 x_1 = 1 / 6, \\
+w_1 y_1 = 1 / 6.
+\end{gather}
+The solution is $ \rbr{ x_1, y_1, w_1 } = \rbr{ 1 / 3, 1 / 3, 1 / 6 } $. Hence, we have
+\begin{equation}
+\hat{I} (\hat{f}) = \frac{1}{2} \hat{f} \rbr{ \frac{1}{3}, \frac{1}{3} },
+\end{equation}
+and
+\begin{equation}
+I \rbr{f} = \abs{S} \hat{f} \rbr{ \frac{1}{3} \rbr{ \mathbf{v}_0 + \mathbf{v}_1 + \mathbf{v}_2 } }.
+\end{equation}
+As for the case from the textbook, where $S$ is an equilateral triangle, we have
+\begin{equation}
+I \rbr{f} = \frac{\sqrt{3}}{4} f \rbr{ \frac{1}{2}, \frac{\sqrt{3}}{6} }.
+\end{equation}
+
+We apply $ \text{N} \rbr{30} $ to solve the problem directly. The numerical algorithm succeeds to yield the correct solution. The figure is given in Figure \ref{Fig:M2D1}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure01.pgf}}
+\caption{Figure of the two-dimensional cubature of $ D = 1 $}
+\label{Fig:M2D1}
+\end{figure}
+
+In this case, the smallest $N$ is $1$.
+
+\subsubsection{The case $ D = 2 $}
+
+The case $ D = 2 $ is more subtle.
+
+Since $ \abs{\mathcal{I}_2} = 6 $, we may consider using $ L = 6 $ constraints from $\mathcal{I}_2$ and $ N = 2 $ nodes. The only choice for groups is $ \sbr{ 1, 2, 3 } $ with $ C = 3 $. However, using Newton's method the numerical diverge rapidly. using $ \text{FPG} \rbr{ 10^6, 10^{-2} }$ the final value of sum of squares is $ F ( \mathbf{x}_{\cdot}^{\rbr{K}}, u_{\cdot}^{\rbr{K}} ) = \text{\input{Text1.txt}} $. This means the non-existence of solutions.
+
+We turn to consider increasing $N$. We set $ N = 3 $. With groups $ \sbr{ 1, 1, 1 } $ and $ C = 1 $, the degree of freedom is $ 2 N + C = 7 $.
+
+By using constraints $\mathcal{I}_2$ only, we have $ L = 6 $. We apply $ \text{FPG} \rbr{ 10^5, 10^{-2} } $ to get the following results in Figure \ref{Fig:M2D2Ran} for different initial values.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure02.pgf}}~
+\scalebox{0.75}{\input{Figure03.pgf}}
+\scalebox{0.75}{\input{Figure04.pgf}}~
+\scalebox{0.75}{\input{Figure05.pgf}}
+\scalebox{0.75}{\input{Figure06.pgf}}~
+\scalebox{0.75}{\input{Figure07.pgf}}
+\caption{Figures of the two-dimensional cubatures of $ D = 2 $}
+\label{Fig:M2D2Ran}
+\end{figure}
+
+It can be seen that the weights $w_{\cdot}$ always converge to $ 1 / 6 $, and the figure itself enjoys symmetry.
+
+We may also add a new constraint to increase the number of constraints. We use $ \text{FPG} \rbr{ 10^4, 10^{-2} } + \text{N} \rbr{30} $ to optimize. We constrain $ \mathcal{I}_2 \cup \cbr{ \pbr{ 0, 3 } } $ and get the results in Figure \ref{Fig:M2D203}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure08.pgf}}~
+\scalebox{0.75}{\input{Figure09.pgf}}
+\caption{Figures of the two-dimensional cubatures of $ D = 2 $ with extra constraint $ \pbr{ 0, 3 } $}
+\label{Fig:M2D203}
+\end{figure}
+
+If we constrain $ \mathcal{I}_2 \cup \cbr{ \pbr{ 1, 2 } } $, the results are shown in Figure \ref{Fig:M2D212}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure10.pgf}}~
+\scalebox{0.75}{\input{Figure11.pgf}}
+\caption{Figures of the two-dimensional cubatures of $ D = 2 $ with extra constraint $ \pbr{ 1, 2 } $}
+\label{Fig:M2D212}
+\end{figure}
+
+In conclusion, in this case the minimal $N$ is $3$.
+
+\subsubsection{The case $ D = 3 $}
+
+We optimize for $ D = 3 $, $ N = 3 $ with $ \text{FPG} \rbr{ 10^6, 10^{-2} } $ and get the residual $ F ( \mathbf{x}_{\cdot}^{\rbr{K}}, u_{\cdot}^{\rbr{K}} ) = \text{\input{Text2.txt}} $. This implies $ N \le 3 $ is impossible.
+
+We turn to try $ N = 4 $. In this case, since $ \abs{\mathcal{I}_3} = 10 $, we may group with $ C = 2 $ and thus try $ \sbr{ 1, 1, 2, 2 } $. Using $\mathcal{I}_3$ for constraints, we have $ L = 2 N + C = 10 $. We use $ \text{FPG} \rbr{ 10^4, 10^{-2} } + \text{N} \rbr{30} $ to optimize and get the results in Figure \ref{Fig:M2D3}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure12.pgf}}~
+\scalebox{0.75}{\input{Figure13.pgf}}
+\caption{Figures of the two-dimensional cubatures of $ D = 3 $}
+\label{Fig:M2D3}
+\end{figure}
+
+In this case, the smallest $N$ is $4$.
+
+\subsection{The three-dimensional case}
+
+Here $ M = 3 $. We take the notation $ \mathbf{x} = \rbr{ x, y, z } $.
+
+\subsubsection{The case $ D = 1 $}
+
+The case $ D = 1 $ can be analytically computed. By using $\mathcal{I}_1$ as constraints, we have $ L = 3 $ and we take $ N = 1 $. The only choice for groups is $\sbr{1}$ with $ C = 1 $. The equations turns out to be
+\begin{gather}
+w_1 = 1 / 6, \\
+w_1 x_1 = 1 / 24, \\
+w_1 y_1 = 1 / 24, \\
+w_1 z_1 = 1 / 24
+\end{gather}
+The solution is $ \rbr{ x_1, y_1, z_1, w_1 } = \rbr{ 1 / 4, 1 / 4, 1 / 4, 1 / 6 } $. Hence, we have
+\begin{equation}
+\hat{I} (\hat{f}) = \frac{1}{6} \hat{f} \rbr{ \frac{1}{4}, \frac{1}{4}, \frac{1}{4} },
+\end{equation}
+and
+\begin{equation}
+I \rbr{f} = \abs{S} \hat{f} \rbr{ \frac{1}{4} \rbr{ \mathbf{v}_0 + \mathbf{v}_1 + \mathbf{v}_2 } }.
+\end{equation}
+
+We apply $ \text{N} \rbr{30} $ to solve the problem directly. The numerical algorithm succeeds to yield the correct solution. The figure is given in Figure \ref{Fig:M3D1}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure14.pgf}}
+\caption{Figure of the three-dimensional cubature of $ D = 1 $}
+\label{Fig:M3D1}
+\end{figure}
+
+In this case, the smallest $N$ is $1$.
+
+\subsubsection{The case $ D = 2 $}
+
+We optimize for $ D = 2 $, $ N = 3 $ with $ \text{FPG} \rbr{ 10^6, 10^{-2} } $ and get the residual $ F ( \mathbf{x}_{\cdot}^{\rbr{K}}, u_{\cdot}^{\rbr{K}} ) = \text{\input{Text3.txt}} $. This implies $ N \le 3 $ is impossible.
+
+We turn to try $ N = 4 $. In this case, since $ \abs{\mathcal{I}_2} = 10 $, we may group with $ C = 1 $ and $ \sbr{ 1, 1, 1, 1 } $. We have $ 3 N + C = 13 $. With some degree of freedom not fixed, We use $ \text{FPG} \rbr{ 10^5, 10^{-2} } $ and get the following results in Figure \ref{Fig:M3D2Ran}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure15.pgf}}
+\scalebox{0.75}{\input{Figure16.pgf}}
+\scalebox{0.75}{\input{Figure17.pgf}}
+\caption{Figures of the three-dimensional cubatures of $ D = 2 $}
+\label{Fig:M3D2Ran}
+\end{figure}
+
+\begin{figure}[htbp]
+\ContinuedFloat
+\centering
+\scalebox{0.75}{\input{Figure18.pgf}}
+\scalebox{0.75}{\input{Figure19.pgf}}
+\scalebox{0.75}{\input{Figure20.pgf}}
+\caption{Figures of the three-dimensional cubatures of $ D = 2 $ (cont.)}
+\end{figure}
+
+We may also add extra constraints. Using $ \mathcal{I}_2 \cup \cbr{ \pbr{ 0, 0, 3 }, \pbr{ 0, 3, 0 }, \pbr{ 3, 0, 0 } } $ as constraints, we have $ L = 2 N + C = 13 $. We use $ \text{FPG} \rbr{ 10^4, 10^{-2} } + \text{N} \rbr{30} $ to optimize and get the results in Figure \ref{Fig:M3D2333}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure21.pgf}}
+\scalebox{0.75}{\input{Figure22.pgf}}
+\caption{Figures of the three-dimensional cubatures of $ D = 2 $ with extra constraints $ \pbr{ 0, 0, 3 }, \pbr{ 0, 3, 0 }, \pbr{ 3, 0, 0 } $}
+\label{Fig:M3D2333}
+\end{figure}
+
+In this case, the smallest $N$ is $4$.
+
+\subsubsection{The case $ D = 3 $}
+
+We optimize for $ D = 3 $, $ N = 5 $ with $ \text{FPG} \rbr{ 10^6, 10^{-2} } $ and get the residual $ F ( \mathbf{x}_{\cdot}^{\rbr{K}}, u_{\cdot}^{\rbr{K}} ) = \text{\input{Text4.txt}} $. This implies $ N \le 5 $ is impossible.
+
+We turn to try $ N = 6 $. In this case, since $ \abs{\mathcal{I}_3} = 20 $, we may group with $ C = 2 $ and thus try $ \sbr{ 1, 1, 1, 2, 2, 2 } $. Using $\mathcal{I}_3$ for constraints, we have $ L = 2 N + C = 20 $. We use $ \text{FPG} \rbr{ 10^4, 10^{-2} } + \text{N} \rbr{30} $ to optimize and get the results in Figure \ref{Fig:M3D3}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure23.pgf}}
+\scalebox{0.75}{\input{Figure24.pgf}}
+\caption{Figures of the three-dimensional cubatures of $ D = 3 $}
+\label{Fig:M3D3}
+\end{figure}
+
+In this case, the smallest $N$ is $6$.
+
+\section{Discussion}
+
+\subsection{Non-existence with $ M = 2 $, $ D = 2 $, $ N = 2 $}
+
+We observe non-existence of solution when $ D = 2 $ and $ N = 2 $. The groups are $ \sbr{ 1, 2, 3 } $ with $ C = 3 $. We give a proof of the non-existence here. We consider on the simplex $S$ for simplicity.
+
+If we have a numerical cubature with $ D = 2 $ and $ N = 2 $, we may find a line
+\begin{equation}
+\ell \rbr{ x, y } = A x + B y + C = 0,
+\end{equation}
+which we assume $ A^2 + B^2 \neq 0 $, passing through $\mathbf{x}_1$ and $\mathbf{x}_2$, even if the two points coincide. We consider the integration of $\ell^2$. Since $ \ell^2 \rbr{\mathbf{x}_1} = \ell^2 \rbr{\mathbf{y}_1} = 0 $, we immediately have
+\begin{equation}
+I \rbr{\ell^2} = w_1 \ell^2 \rbr{\mathbf{x}_1} + w_2 \ell^2 \rbr{\mathbf{x}_2} = 0.
+\end{equation}
+However, the integral itself
+\begin{equation}
+\int_S \ell^2 \rbr{ x, y } \sd x \sd y > 0
+\end{equation}
+since $\ell^2$ does not vanish identically over $S$. This contradicts the exactness of $I$ on $ P_2 \rbr{S} $.
+
+In this case, the degree of freedom is $ 2 N + C = 6 $ and the number of constraints is $ L = 6 $. Although this coincides, the non-linear solution has no solution. The is caused by the non-linearity of the system. Compared to the one-dimensional case, orthogonal polynomials have $0$-level sets as curves, and we cannot easily continue the argument in the one-dimensional case. This exemplifies the difficulties of higher-dimensional Gaussian cubatures.
+
+This results can be generalized to arbitrary dimension. For arbitrary $M$ and $ D = 2 $, $ N \le M $ is impossible.
+
+\subsection{Symmetric cubatures}
+
+It can be observed from the numerical results, symmetry gives rise to some cubatures.
+
+For the case $ D = 1 $, we take nodes to be barycenter of the (unique) $M$-cell of $\hat{S}$. To be concrete, we consider $\mathbf{x}_1$ to be $ \mathbf{1} / M $, namely the barycenter of $\hat{S}$. We set $ w_1 = 1 / M ! $. In this case,
+\begin{gather}
+I \rbr{ \mathbf{x} \mapsto 1 } = \frac{1}{ M ! } = \int_{\hat{S}} 1 \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t } = \frac{1}{ \rbr{ M + 1 } ! } = \int_{\hat{S}} x_t \sd \mathbf{x}.
+\end{gather}
+
+However for $ D = 2 $, the argument in the last subsection applies again, and we get $ N \ge M $. Hence, the degree of freedom is $ N M + C \ge M^2 + 1 $. However, $ \abs{\mathcal{I}_2} = \rbr{ M + 1 } \rbr{ M + 2 } / 2 $. This means a greater number of degree of freedom does not lead to solutions.
+
+One intuitive choice is the barycenters of the $1$-cells of $\hat{S}$. More precisely, we set $ N = M + 1 $, $ \mathbf{x}_t = \mathbf{e}_t $, $ \mathbf{x}_{ M + 1 } = 0 $, with $ w_t = 1 / \rbr{ M + 1 } ! $. One may verify
+\begin{gather}
+I \rbr{ \mathbf{x} \mapsto 1 } = \frac{ M + 1 }{ \rbr{ M + 1 } ! } = \frac{1}{ M ! } \int_{\hat{S}} 1 \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t } = \frac{1}{ \rbr{ M + 1 } ! } = \int_{\hat{S}} x_t \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t x_s } = 0 \neq \frac{1}{ \rbr{ M + 2 } ! } = \int_{\hat{S}} x_t x_s \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t^2 } = \frac{1}{ \rbr{ M + 1 } ! } \neq \frac{2}{ \rbr{ M + 2 } ! } = \int_{\hat{S}} x_t^2 \sd \mathbf{x}.
+\end{gather}
+
+Another choice is to choose the $ \rbr{ M - 1 } $-cells of $\hat{S}$. More precisely, we set $ N = M + 1 $, $ \mathbf{x}_t = \rbr{ \mathbf{1} - \mathbf{e}_t } / M M ! $, $ \mathbf{x}_{ M + 1 } = \mathbf{1} / M M ! $, and $ w_t = 1 / \rbr{ M + 1 } ! $. We have
+\begin{gather}
+I \rbr{ \mathbf{x} \mapsto 1 } = \frac{ M + 1 }{ \rbr{ M + 1 } ! } = \frac{1}{ M ! } = \int_{\hat{S}} 1 \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t } = \frac{M}{ M \rbr{ M + 1 } ! } = \int_{\hat{S}} x_t \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t x_s } = \frac{ M - 1 }{ M^2 \rbr{ M + 1 } ! } \neq \frac{1}{ \rbr{ M + 2 } ! } = \int_{\hat{S}} x_t x_s \sd \mathbf{x}, \\
+I \rbr{ \mathbf{x} \mapsto x_t^2 } = \frac{M}{ M^2 \rbr{ M + 1 } ! } \neq \frac{2}{ \rbr{ M + 2 } ! } = \int_{\hat{S}} x_t^2 \sd \mathbf{x},
+\end{gather}
+unless $ M = 2 $. In the two-dimensional case, we have
+\begin{equation}
+\hat{I} (\hat{f}) = \frac{1}{6} \hat{f} \rbr{ 0, \frac{1}{2} } + \frac{1}{6} \hat{f} \rbr{ \frac{1}{2}, 0 } + \frac{1}{6} \hat{f} \rbr{ \frac{1}{2}, \frac{1}{2} }.
+\end{equation}
+This formula has second algebraic precision. This corresponds to the well-known Simpson's formula.
+
+\end{document}

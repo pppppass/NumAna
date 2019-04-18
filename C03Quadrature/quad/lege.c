@@ -15,22 +15,22 @@ double calc_lege(int order, double x)
     return f;
 }
 
-//  zeros <OUT>:
+//  zero <OUT>:
 //      [0:k]
 //          [0:k]: d <TEMP>
 //  work <TEMP>:
 //      [k:k]: e
-void calc_lege_zero(int order, double* zeros, double* work)
+void calc_lege_zero(int order, double* zero, double* work)
 {
     int k = order;
-    double* z = zeros;
-    double* d = zeros, * e = work;
+    double* z = zero;
+    double* d = zero, * e = work;
     for (int i = 0; i < k; i++)
     {
         d[i] = 0.0;
         e[i] = (1.0 + (double)i) / sqrt((2.0 * (double)i + 1.0) * (2.0 * (double)i + 3.0));
     }
-    // solve in-place: zeros[i] = d[i]
+    // solve in-place: zero[i] = d[i]
     int r = LAPACKE_dstev(LAPACK_ROW_MAJOR, 'N', k, d, e, NULL, k);
 #ifdef DEBUG
     {
@@ -46,14 +46,14 @@ void calc_lege_zero(int order, double* zeros, double* work)
     return ;
 }
 
-//  zeros:
+//  zero:
 //      [0:k]
 //  weight <OUT>:
 //      [0:k]
-void calc_lege_weight(int order, const double* zeros, double* weight)
+void calc_lege_weight(int order, const double* zero, double* weight)
 {
     int k = order;
-    const double* z = zeros;
+    const double* z = zero;
     double* w = weight;
     for (int i = 0; i < k; i++)
     {
@@ -64,14 +64,14 @@ void calc_lege_weight(int order, const double* zeros, double* weight)
     return ;
 }
 
-//  zeros <OUT>, weight <OUT>:
+//  zero <OUT>, weight <OUT>:
 //      [0:k]
-void calc_lege_para(int order, double x_low, double x_high, double* zeros, double* weight)
+void calc_lege_para(int order, double x_low, double x_high, double* zero, double* weight)
 {
     int k = order;
-    double* z = zeros, * w = weight;
-    calc_lege_zero(order, zeros, weight);
-    calc_lege_weight(order, zeros, weight);
+    double* z = zero, * w = weight;
+    calc_lege_zero(order, zero, weight);
+    calc_lege_weight(order, zero, weight);
     for (int i = 0; i < k; i++)
     {
         z[i] = (x_low + x_high) / 2.0 + z[i] * (x_high - x_low) / 2.0;

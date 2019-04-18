@@ -18,11 +18,11 @@ double quad_simp_unif(int num_node, double x_low, double x_high, const double* y
 double quad_romb_unif(int num_node, int num_order, double x_low, double x_high, const double* y_node, double* work);
 
 // lagu.c
-// void calc_lagu_zero(int order, double* zeros, double* work);
+// void calc_lagu_zero(int order, double* zero, double* work);
 // double quad_lagu(int num_node, const double* x_node, const double* y_node);
-void calc_lagu_para(int order, double* zeros, double* weight);
+void calc_lagu_para(int order, double* zero, double* weight);
 
 // lege.c
-// void calc_lege_zero(int order, double x_low, double x_high, double* zeros, double* work);
+// void calc_lege_zero(int order, double x_low, double x_high, double* zero, double* work);
 // double quad_lege(int num_node, double x_low, double x_high, const double* x_node, const double* y_node);
-void calc_lege_para(int order, double x_low, double x_high, double* zeros, double* weight);
+void calc_lege_para(int order, double x_low, double x_high, double* zero, double* weight);
