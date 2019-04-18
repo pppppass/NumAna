@@ -178,7 +178,7 @@ rt_2 = [[], []]
 for n in n_list_2:
     
     start = time.time()
-    x, w = quad.calc_lagu_para(n, numpy.zeros(n), numpy.zeros(n))
+    x, w = quad.calc_lagu_para(n, numpy(n), numpy(n))
     for r in range(rep):
         y = f_exp(x)
         i_lagu = y.dot(w)
@@ -186,7 +186,7 @@ for n in n_list_2:
     rt_2[0].append((i_lagu, (end - start) / rep, x.size))
     
     start = time.time()
-    x, w = quad.calc_lege_para(n, 0.0, x_high, numpy.zeros(n), numpy.zeros(n))
+    x, w = quad.calc_lege_para(n, 0.0, x_high, numpy(n), numpy(n))
     for r in range(rep):
         y = f(x)
         i_lege = y.dot(w)
