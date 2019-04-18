@@ -9,7 +9,7 @@ ifneq (,$(shell which icc))
 		CC = icc
 endif
 endif
-PYCC = $(CC) -pthread -Werror -Wno-error=strict-prototypes -Wno-error=unused-function
+PYCC = $(CC) -pthread
 PYLD = $(CC) -pthread -shared
 
 .PHONY: all
