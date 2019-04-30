@@ -1,0 +1,361 @@
+%! TeX encoding = UTF-8
+%! TeX program = LuaLaTeX
+
+\documentclass[english, nochinese]{pnote}
+\usepackage[paper, cgu]{pdef}
+\usepackage{pgf}
+\usepackage{caption}
+
+\DeclareMathOperator{\ope}{\mathrm{E}}
+
+\title{Report of Project of Chapter 5}
+\author{Zhihan Li, 1600010653}
+\date{April 28, 2019}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Problem (Page 150 Coding Exercise 4).} We consider $ \spi / 3 $- periodic solutions of the equation $ u'' \rbr{t} + 2 u' \rbr{t} + 2 u \rbr{t} = s \rbr{t} $ with different $s$ and apply FFT (fast Fourier transform) to solve the problem. We use FFT to solve the cyclic linear system found in finite difference method, and also adopt FFT to implement the spectral method. We compare the numerical results with the analytical solution. We implement the FFT in a real-to-real manner, meaning we leverage the symmetry to avoid complex computations and to halve the computational effort. The discussion are presented in the following sections.
+
+\section{Model problem}
+
+\subsection{Description}
+
+We consider the ordinary differential equation
+\begin{equation} \label{Eq:Pero}
+u'' \rbr{t} + 2 u' \rbr{t} + 2 u \rbr{t} = s \rbr{t},
+\end{equation}
+where $u$ is the source term. We consider the periodic boundary condition with period $ \spi / 3 $. We implicitly assume that $s$ has a period of $ \spi / 3 $.
+
+We try the numerical methods on the two following model problems.
+
+The first model problem is given in the textbook, namely $ s_1 \rbr{t} = 3 \cos 6 t $. The analytical solution is given by
+\begin{equation}
+u_1 \rbr{t} = -\frac{51}{650} \cos 6 t + \frac{9}{325} \sin 6 t.
+\end{equation}
+
+Another model problem is created to consider the case where modes of multiple frequencies are presented in $u$ and $s$. We choose
+\begin{equation}
+s_2 \rbr{t} = \rbr{ 2 + 12 \cos 6 t + 36 \rbr{ -\sin 6 t + \cos^2 6 t } } \exp \rbr{ \sin 6 t }.
+\end{equation}
+The analytical solution is given by
+\begin{equation}
+u_2 \rbr{t} = \exp \rbr{ \sin 6 t }.
+\end{equation}
+
+\subsection{Well-posedness}
+
+We prove the existence and uniqueness of the problem  \eqref{Eq:Pero}.
+
+Denote $ v = u' $, we obtain the system
+\begin{equation}
+\msbr{ u \\ v }' = \msbr{ 0 & 1 \\ -2 & -2 } \msbr{ u \\ v } + \msbr{ 0 \\ s }.
+\end{equation}
+Hence, the solution can be written as
+\begin{equation}
+u \rbr{t} = u_0 \rbr{t} + A \exp \rbr{ \rbr{ -1 + \si } t } + B \exp \rbr{ \rbr{ -1 - \si } t }
+\end{equation}
+where $u_0$ is a special solution, given assumptions on regularity of $u$.
+Moreover, the condition
+\begin{equation} \label{Eq:Eq}
+\msbr{ u \\ v } \rbr{0} = \msbr{ u \\ v } \rbr{\frac{\spi}{3}}
+\end{equation}
+is sufficient to enforce $ \spi / 3 $ periodic solutions. As a result, the existence and uniqueness directly follows from the equation with respect to $A$ and $B$ \eqref{Eq:Eq}. The matrix involved is actually
+\begin{equation}
+\msbr{ 1 & 1 \\ \exp \rbr{ \rbr{ -1 + \si } \spi / 3 } & \exp \rbr{ \rbr{ -1 - \si } \spi / 3 } },
+\end{equation}
+whose invertibility yields the well-posedness of the periodic solution problem.
+
+\section{Fast fourier transform}
+
+\subsection{Discrete Fourier transform}
+
+The DFT (discrete Fourier transform) of a sequence $ U_0, U_1, U_2, \cdots, U_{ N - 1 } $ is defined as
+\begin{equation}
+\hat{U}_k = \sum_{ j = 0 }^{ N - 1 } U_j \omega^{ -j k },
+\end{equation}
+for $ k = 0, 1, \cdots, N - 1 $ where
+\begin{equation}
+\omega = \exp \rbr{ \frac{ 2 \spi \si }{N} }
+\end{equation}
+the the primitive root of unit. We implicitly assume that the index goes circularly modulo $N$.
+
+The IDFT (inverse discrete Fourier transform) of a sequence $ V_0, V_1, V_2, \cdots, V_{ N - 1 } $ is defined as
+\begin{equation}
+\check{V}_j = \frac{1}{N} \sum_{ k = 0 }^{ N - 1 } V_j \omega^{ j k }.
+\end{equation}
+It follows that $ \check{\hat{U}} = U $ and $ \hat{\check{V}} = V $.
+
+Direct computation of DFT and IDFT needs $ O \rbr{N^2} $ float operations.
+
+\subsection{Complex-to-complex FFT}
+
+To substantially decrease the computational cost, one may make factorization in order to reduce repeated computation. Intuitively, if $ 2 \mid N $, it can be derived that
+\begin{equation}
+\hat{U}_k = \sum_{ j = 0 }^{ N - 1 } U_j \omega^{ -j k } = \sum_{ j = 0 }^{ N / 2 - 1 } U_{ 2 j } \omega^{ -2 j k } + \omega^{-k} \sum_{ j = 0 }^{ N / 2 - 1 } U_{ 2 j + 1 } \omega^{ -2 j k } = \rbr{U^0}\sphat_k + \omega^{-k} \rbr{U^1}\sphat_k,
+\end{equation}
+where $ U^0_k = U_{ 2 k } $, $ U^1_k = U_{ 2 k + 1 } $ or
+\begin{gather}
+U^0 = \msbr{ U_0 & U_2 & \cdots & U_{ N - 2 } } \\
+U^1 = \msbr{ U_1 & U_3 & \cdots & U_{ N - 1 } }
+\end{gather}
+corresponds to the even entries and the odd entries. Hence, we may conduct the recursive process to compute the Fourier transform of $U^0$ and $U^1$. According to analysis, this algorithm enjoys a time complexity of $ O \rbr{ N \log N } $.
+
+Assume $ N = 2^K $ now.
+We adopt the abuse of notation
+\begin{equation}
+b_{ K - 1 } \cdots b_1 b_0 = \rbr{ b_{ K - 1 } \cdots b_1 b_0 }_2.
+\end{equation}
+% Denote the reverse bits of a integer as
+% \begin{equation}
+% \overline{\rbr{ b_{ K - 1 } \cdots b_1 b_0 }_2} = \rbr{ b_0 b_1 \cdots b_{ K - 1 } }_2.
+% \end{equation}
+% For example, if $ K = 4 $, we have $ \overline{5} = 10 $, $ \overline{1} = 8 $.
+According to the recursive process, to calculate $\hat{U_k}$, we eventually need to evaluate $ U^{ b_0 b_1 \cdots b_{ K - 1 } }_0 $. This is exactly $ U_{ b_{ K - 1 } \cdots b_1 b_0 } $. We then evaluate $ U^{ b_0 b_1 \cdots b_{ K - 2 } } $, which needs $ U^{ b_0 b_1 \cdots b_{ K - 2 } 0 }_0 $ and $ U^{ b_0 b_1 \cdots b_{ K - 2 } 1 }_0 $.
+
+As a result, directly computing these intermediate results introduces a loss of locality, which means the cache mechanism in modern CPU architectures will hurt rather than increase performance. As a result, we conduct a bit-reverse swap on $U$ first, by exchanging entries at $ b_{ K - 1 } \cdots b_1 b_0 $ and $ b_0 b_1 \cdots b_{ K - 1 } $. After that, the $ b_{ K - 1 } \cdots b_1 b_0 $-th entry of the array in the memory actually stores $ U^{ b_{ K - 1 } \cdots b_1 b_0 }_0 $.
+
+We then calculate $ U^{ b_{ K - 1 } \cdots b_2 b_1 } $ from $ U^{ b_{ K - 1 } \cdots b_2 b_1 0 } $ and $ U^{ b_{ K - 1 } \cdots b_2 b_1 1 } $ by
+\begin{gather}
+U^{ b_{ K - 1 } \cdots b_2 b_1 }_0 = U^{ b_{ K - 1 } \cdots b_2 b_1 0 }_0 + U^{ b_{ K - 1 } \cdots b_2 b_1 1 }_0, \\
+U^{ b_{ K - 1 } \cdots b_2 b_1 }_1 = U^{ b_{ K - 1 } \cdots b_2 b_1 0 }_0 - U^{ b_{ K - 1 } \cdots b_2 b_1 1 }_0
+\end{gather}
+or simply
+\begin{equation}
+U^{ b_{ K - 1 } \cdots b_2 b_1 }_{b_0} = U^{ b_{ K - 1 } \cdots b_2 b_1 0 } + \rbr{-1}^{b_0} U^{ b_{ K - 1 } \cdots b_2 b_1 1 }.
+\end{equation}
+The computation can be conducted in place, namely the data of $ U^{ b_{ K - 1 } \cdots b_2 b_1 } $ is stored in the interval $ \sbr{ b_{ K - 1 } \cdots b_2 b_1 0 , b_{ K - 1 } \cdots b_2 b_1 1 } $, which is previously used by $ U^{ b_{ K - 1 } \cdots b_2 b_1 0 } $ and $ U^{ b_{ K - 1 } \cdots b_2 b_1 1 } $.
+
+We continue the process. In the $p$-th step where $ p = 0, 1, \cdots, K - 1 $, we calculate $ U^{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } } $ from $ U^{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } 0 } $ and $ U^{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } 1 } $. The formula related is
+\begin{equation} \label{Eq:FFT}
+U^{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } }_{ b_p \cdots b_1 b_0 } = U^{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } 0 }_{ b_{ p - 1 } \cdots b_1 b_0 } + \exp \rbr{-\frac{ 2 \rbr{ b_{ p - 1 } \cdots b_1 b_0 } \spi \si }{2^{ p + 1 }}} U^{ b^{ K - 1 } \cdots b_{ p + 1 } b_{ p + 1 } 1 }_{ b_{ p - 1 } \cdots b_1 b_0 }.
+\end{equation}
+All the calculations are carried out in place, by storing $ U^{ b_{ K - 1 } \cdots b{ p + 2 } b_{ p + 1 } } $ in the interval $ \sbr{ b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } 0 0 \cdots 0, b_{ K - 1 } \cdots b_{ p + 2 } b_{ p + 1 } 1 1 \cdots 1 } $.
+
+By analysis, the FFT described above has $ O \rbr{ N \log N }$ time complexity and needs only $ O \rbr{1} $ extra storage.
+
+The IFFT (inverse Fast Fourier transform) is very much similar, except changing $ \exp \rbr{ -2 \rbr{ b_{ p - 1 } \cdots b_1 b_0 } \spi \si / 2^{ p + 1 } } $ in \eqref{Eq:FFT} to $ \exp \rbr{ 2 \rbr{ b_{ p - 1 } \cdots b_1 b_0 } \spi \si / 2^{ p + 1 } } $, and introduce a normalization by dividing $N$ in the very end. The time complexity is again $ O \rbr{ N \log N } $ in time and $ O \rbr{1} $ in extra space.
+
+\subsection{Real-to-real FFT}
+
+Assume the input of FFT is all real. If we adopt the complex-to-complex FFT algorithm, we need to pad zeros to the imaginary component. However, all the information we make use of is $N$ floating point numbers instead of $ 2 N $. This gives rise to the question that whether there is a more efficient implementation when the input sequence is real?
+
+The answer is yes, corresponding to the so-called real-to-real FFT, which is widely used and implemented in the packages like FFTW.
+
+The first key observation is about the structure of output sequence. If $U$ is real, we note that
+\begin{equation}
+\hat{U}_{ N - k } = \sum_{ j = 0 }^{ N - 1 } U_j \omega^{ -j \rbr{ N - k } } = \sum_{ j = 0 }^{ N - 1 } U_j \omega^{ j k } = \sum_{ j = 0 }^{ N - 1 } U_j \overline{\omega^{ -j k }} = \overline{\hat{U}_k}.
+\end{equation}
+Leveraging the conjugational symmetry, we may consider a cleverer memory arrangement: store $U_0$ and $ U_{ N / 2 } $ a the $0$ and $ N - 2 $-th entries respectively since they are reals, and store $ \Re U_k $ and $ \Im U_k $ at $k$ and $ N / 2 + k $-th entries respectively for all $ k = 1, 2, \cdots, N / 2 - 1 $. The information of $U_k$ for $ k = N / 2 + 1, N / 2 + 2, \cdots, N - 1 $ can be recovered by $ U_k = \Re U_{ N - k } - \Im U_{ N - k } $.
+
+The process of real-to-real FFT is very much similar to the complex-to-complex FFT, with only some adaptation to the special storage scheme.
+
+Here we conduct an analysis the differences. Assume $U$ is real here. Addition between two complex numbers results in two real addition operations, and multiplication between two complex numbers results in four real multiplication and two real additions. As a result, complex-to-complex FFT needs
+\begin{equation}
+\begin{split}
+&\ptrel{=} K \rbr{ N \mathop{\text{complex additions}} + N \mathop{\text{complex multiplications}} } \\
+&= 4 K N \mathop{\text{real additions}} + 4 K N \mathop{\text{real multiplications}},
+\end{split}
+\end{equation}
+while real-to-real FFT needs
+\begin{equation}
+\begin{split}
+&\ptrel{=} K \left( \phantom{=} \rbr{ N / 2 - 1 } \mathop{\text{complex additions}} + \rbr{ N / 2 - 1 } \mathop{\text{complex multiplications}} \right. \\
+&\ptrel{=} \phantom{ K \left( \right. } + 2 \left. \mathop{\text{real additions}} \right) \\
+&= 2 K \rbr{ N - 1 } \mathop{\text{real additions}} + 2 K \rbr{ N - 2 } \mathop{\text{real multiplications}},
+\end{split}
+\end{equation}
+which halves the computational cost.
+
+The real-to-real IFFT is more subtle, since here $V$ is no longer stands for a sequence, and the reverse bit swap cannot be performed directly. In other words, due to the loss of symmetry of storage in the time and frequency domain, we cannot simply substitute $\omega^{-1}$ as $\omega$ to implement the inverse transform. However, we may each step in \eqref{Eq:FFT}. The inverse transformation of \eqref{Eq:FFT} can be determined analytically. We go through $ p = K - 1, N - 2, \cdots, 0 $ to construct the final result $\check{V}$.
+
+The time complexity of real-to-real IFFT is again $ O \rbr{ N \log N } $, but again halved compared to complex-to-complex IFFT.
+
+\section{Algorithms towards the equation}
+
+With the repertoire of FFT and IFFT routines, we turn to consider how to solve the ordinary differential equation \eqref{Eq:Pero}. We space $N$ nodes evenly on the periodic interval $ T \sbr{ 0, \spi / 3 } $, say
+\begin{equation}
+x_j = j h
+\end{equation}
+where
+\begin{equation}
+h = \frac{\spi}{ 3 N }.
+\end{equation}
+
+\subsection{Finite difference method}
+
+One intuitive idea is to utilize the finite difference method by discretizing directly. The linear system is exactly
+\begin{equation}
+\frac{ U_{ j + 1 } - 2 U_j + U_{ j - 1 } }{h^2} + \frac{ U_{ j + 1 } - U_{ j - 1 } }{h} + 2 U_j = s_j
+\end{equation}
+when using central difference scheme. The truncation error is of order $ O \rbr{h^2} $. We can also consider the forward difference (one-side) scheme, given by
+\begin{equation}
+\frac{ U_{ j + 1 } - 2 U_j + U_{ j - 1 } }{h^2} + \frac{ 2 U_{ j + 1 } - U_j }{h} + 2 U_j = s_j.
+\end{equation}
+The truncation error is $ O \rbr{h} $.
+
+The linear system can be summarized as
+\begin{equation}
+\alpha U_{ j + 1 } + \beta U_j + \gamma U_{ j - 1 } = s_j.
+\end{equation}
+After DFT, the system can be written as
+\begin{equation}
+\rbr{ \alpha \omega^k + \beta + \gamma \omega^{-k} } \hat{U}_k = \hat{s}_k.
+\end{equation}
+Hence we may direct make the division
+\begin{equation}
+\hat{U}_k = \frac{1}{ \alpha \omega^k + \beta + \gamma \omega^{-k} } \hat{s}_k.
+\end{equation}
+After solving out $\hat{U}$, we may use IDFT to find the solution $U$.
+
+\subsection{Spectral method}
+
+Another approach to this problem is to use spectral method. Due to the DFT formula,
+\begin{equation}
+U_j = \frac{1}{N} \sum_{ k = 0 }^{ N - 1 } \hat{U}_k \omega^{ j k } 
+\end{equation}
+we may reconstruct $U$ by
+\begin{equation}
+U \rbr{t} = \frac{1}{N} \sum_{ k = 0 }^{ N - 1 } \hat{U}_k \exp \rbr{ 6 k t \si }.
+\end{equation}
+In other words, we have found a finite basis $ \exp \rbr{ 6 k t \si } $ for $ k = 0, 1, 2, \cdots, N - 1 $ to expand $U$. Enforce
+\begin{equation}
+\alpha u'' \rbr{t} d+ \beta u' \rbr{t} + \gamma u \rbr{t} = s \rbr{t}
+\end{equation}
+on the reconstructed $U$, we deduce the equation on $\hat{U}_k$ by
+\begin{equation}
+\rbr{ -36 \alpha k^2 + 6 \beta k \si + \gamma } \hat{U}_k = \hat{s}_k
+\end{equation}
+or
+\begin{equation}
+\hat{U}_k = \frac{1}{ -36 \alpha k^2 + 6 \beta k \si + \gamma } \hat{s}_k.
+\end{equation}
+
+\section{Numerical results}
+
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"fft/dft.c": Discrete Fourier transform routine;
+\item \verb"fft/fft.c": fast Fourier transform routine (real-to-real);
+\item \verb"fft/ifft.c": inverse fast Fourier transform routine (real-to-real);
+\item \verb"fft/diff.c": finite difference method solvers;
+\item \verb"fft/spec.c": spectral method solvers;
+\item \verb"fft/utils.c": miscellaneous utilities;
+\end{partlist}
+We write Python wrappers for C functions in \verb"fft/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default.
+
+We test the three numerical methods describes above in this section.
+
+If not specified, FFT and IFFT routines are all invoked as the real-to-real version.
+
+\subsection{First model problem}
+
+For the first model problem, $\hat{s_1}$ is calculated directly since $s_1$ only contains waves of one single frequency. To be exact, we have for $ K \ge 2 $,
+\begin{equation}
+\hat{s_1}_k =
+\begin{cases}
+3 N / 2, & k = 1, N - 1; \\
+0, & \text{otherwise}.
+\end{cases}
+\end{equation}
+
+The solutions of the first model problem with different $N$ are plotted in Figure \ref{Fig:FirstFig}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure1.pgf}}
+\caption{Figure of solutions with different $N$ towards the first model problem}
+\label{Fig:FirstFig}
+\end{figure}
+
+We can see directly that the central difference solution is larger than the analytical solution, while the forward difference is greater than the analytical solution. Using terms from the numerical partial difference community, central difference discretization generally suffers from dispersion while forward discretization suffers from dissipation.
+
+The solution of spectral method roughly coincides with analytical solution.
+
+We enlarge the range of $N$ and then compare the three methods quantitatively. The running time are plotted in Figure \ref{Fig:FirstTime}, while $L^2$ and $L^{\infty}$ error in $ \sbr{ 0, \spi / 3 } $ in Figure \ref{Fig:FirstL2} and \ref{Fig:FirstLInfty}.
+
+\begin{figure}[htbp]
+\centering
+\input{Figure3.pgf}
+\caption{Running time with different $N$ towards the first model problem}
+\label{Fig:FirstTime}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure4.pgf}
+\caption{$L^2$ error with different $N$ towards the first model problem}
+\label{Fig:FirstL2}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure5.pgf}
+\caption{$L^{\infty}$ error with different $N$ towards the first model problem}
+\label{Fig:FirstLInfty}
+\end{figure}
+
+In terms of running time, we can see the asymptotic $ O \rbr{ N \log N } $ time complexity. The three algorithms have no significant distinctions.
+
+In terms of errors, we can directly see that the spectral method is precise in this case. The central difference method enjoys $ O \rbr{h^2} $ convergence while forward difference $ O \rbr{h} $. One may observe that for large $N$, errors of finite difference methods increase. This is due to the rounding error when solving the numerical linear algebra system. Sensitivity analysis yields
+\begin{equation}
+\frac{\norm{ \delta U }}{\norm{U}} \lesssim \kappa \frac{\norm{ \delta s }}{\norm{s}}
+\end{equation}
+where $\kappa$ is the condition number, in $\norm{\cdot}$ norm, of the tri-diagonal cyclic matrix with diagonal $\beta$, super-diagonal $\alpha$ and sub-diagonal $\gamma$. Generally we have $ \kappa = O \rbr{N^2} $, $ \norm{U}, \norm{s} = O \rbr{1} $ and $ \norm{ \delta s } = \epsilon $ where $\epsilon$ is the machine precision. In the case of central difference method, the error can be written as
+\begin{equation}
+\norm{e} \lesssim \max \cbr{ h^2, N^2 \epsilon }.
+\end{equation}
+The tipping point is at about $ h = \sqrt[4]{\epsilon} \approx 10^{-4} $, which can be clearly found in the figure. When using forward difference method, we have
+\begin{equation}
+\norm{e} \lesssim \max \cbr{ h, N^2 \epsilon }
+\end{equation}
+and the tipping point is at about $ h = \sqrt[3]{\epsilon} \approx 0.4 \times 10^{-5} $, which can again be found in the figure. After the tipping point, the error grows at the speed $ O \rbr{N} $, which verifies the cause as sensitivity issues.
+
+In conclusion, the spectral method is exact here and works best here.
+
+\subsection{Second model problem}
+
+For the second model problem, $\hat{s_2}$ are calculated using real-to-real FFT routines.
+
+The solutions of the first model problem with different $N$ are plotted in Figure \ref{Fig:SecondFig}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}{\input{Figure2.pgf}}
+\caption{Figure of solutions with different $N$ towards the second model problem}
+\label{Fig:SecondFig}
+\end{figure}
+
+The numerical behavior is very much similar to the first model problem: we can see directly that the central difference solution is larger than the analytical solution, while the forward difference is greater than the analytical solution. The solution of spectral method roughly coincides with analytical solution.
+
+We enlarge the range of $N$ and make the comparison. The running time are plotted in Figure \ref{Fig:SecondTime}, while $L^2$ and $L^{\infty}$ error in $ \sbr{ 0, \spi / 3 } $ in Figure \ref{Fig:SecondL2} and \ref{Fig:SecondLInfty}.
+
+\begin{figure}[htbp]
+\centering
+\input{Figure6.pgf}
+\caption{Running time with different $N$ towards the second model problem}
+\label{Fig:SecondTime}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure7.pgf}
+\caption{$L^2$ error with different $N$ towards the second model problem}
+\label{Fig:SecondL2}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure8.pgf}
+\caption{$L^{\infty}$ error with different $N$ towards the second model problem}
+\label{Fig:SecondLInfty}
+\end{figure}
+
+In terms of running time, we can see the asymptotic $ O \rbr{ N \log N } $ time complexity.
+
+In terms of errors, although the spectral method is not exact, it converges very fast. In fact, it converges in super-polynomial speed. The central difference method enjoys $ O \rbr{h^2} $ convergence while forward difference $ O \rbr{h} $. The behavior of numerical error is again very similar to the the first model problem.
+
+In conclusion, spectral method is again the best here. Compared with the first model problem, the spectral method is not exact. However, it still converges very fast and should be used in practice if applicable.
+
+\end{document}

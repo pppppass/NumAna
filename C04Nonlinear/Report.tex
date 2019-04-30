@@ -114,6 +114,16 @@ In many cases, the Newton's method has only local convergence. This means for ra
 
 \section{Numerical results}
 
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"opt/newt_2d.c": Newton solver for the 2-D case;
+\item \verb"opt/grad_2d.c": Accelerated projection gradient method for the 2-D case;
+\item \verb"opt/newt_3d.c": Newton solver for the 3-D case;
+\item \verb"opt/grad_3d.c": Accelerated projection gradient method for the 3-D case;
+\item \verb"opt/utils.c": miscellaneous utilities;
+\end{partlist}
+We write Python wrappers for C functions in \verb"opt/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default.
+
 In the following numerical experiments, we always initialize by $ \mathbf{x}_{\cdot} \sim \mathcal{N} \rbr{ \mathbf{1} / \rbr{ M + 1 }, 10^{-4} \mathbf{I} } $ and $ u_{\cdot} \sim U \rbr{ 0, 2 / M N } $. Note that $ \mathbf{1} / \rbr{ M + 1 } $ is the barycenter of $\hat{S}$, and $ \ope \sum_{ t = 1 }^N u_{c_t} = 1 / M ! $ corresponds to volume of $\hat{S}$.
 
 \subsection{The two-dimensional case}
