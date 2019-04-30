@@ -1,5 +1,5 @@
-# PGFOBJS = Figure1.pgf Figure2.pgf Figure3.pgf Figure4.pgf Figure5.pgf Figure6.pgf Figure7.pgf Figure8.pgf
-# RUNOBJS = Problem.run
+PGFOBJS = Figure1.pgf Figure2.pgf Figure3.pgf Figure4.pgf Figure5.pgf Figure6.pgf Figure7.pgf Figure8.pgf
+RUNOBJS = Problem.run
 
 CDEPS = fft/dft.c fft/fft.c fft/ifft.c fft/diff.c fft/spec.c fft/utils.c fft/wrappers.c fft/fft.h
 
@@ -45,7 +45,7 @@ fft.so: setup.py setup.cfg $(CDEPS)
 %.py: %.ipynb
 	jupyter nbconvert --to script $*
 
-%.run: %.py opt.so
+%.run: %.py fft.so
 	python $<
 	touch $@
 
