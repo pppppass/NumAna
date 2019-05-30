@@ -8,7 +8,7 @@ ifneq (,$(shell which icc))
 		CC = icc
 endif
 endif
-PYCC = $(CC) -pthread -Werror -Wno-error=strict-prototypes -Wno-error=unused-function
+PYCC = $(CC) -pthread# -Werror -Wno-error=strict-prototypes -Wno-error=unused-function
 PYLD = $(CC) -pthread -shared
 
 .PHONY: all
@@ -45,7 +45,7 @@ intg.so: setup.py setup.cfg $(CDEPS)
 %.py: %.ipynb
 	jupyter nbconvert --to script $*
 
-%.run: %.py fft.so
+%.run: %.py intg.so
 	python $<
 	touch $@
 
