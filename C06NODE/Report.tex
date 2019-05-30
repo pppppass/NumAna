@@ -1,0 +1,372 @@
+%! TeX encoding = UTF-8
+%! TeX program = LuaLaTeX
+
+\documentclass[english, nochinese]{pnote}
+\usepackage[paper, cgu]{pdef}
+\usepackage{pgf}
+\usepackage{caption}
+
+\title{Report of Project of Chapter 6}
+\author{Zhihan Li, 1600010653}
+\date{May 30, 2019}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Problem (Page 208 Coding Exercise 4).} We consider the Lorenz attractor problem for this project. We use different Runge--Kutta integrators to solve this problem. We compare the numerical results with respect to different initial values and parameters for the dynamic. We implement two different Runge--Kutta integrators and also compare the numerical results with different parameters for the integrators. The discussion are presented in the following sections.
+
+\section{Lorenz system}
+
+Consider the Lorenz system
+\begin{equation} \label{Eq:ODE}
+\begin{cases}
+\sd x / \sd t = u \rbr{ x, y, z }, \\
+\sd y / \sd t = v \rbr{ x, y, z }, \\
+\sd z / \sd t = w \rbr{ x, y, z }
+\end{cases}
+\end{equation}
+where
+\begin{gather}
+u \rbr{ x, y, z } = \sigma \rbr{ y - x }, \\
+v \rbr{ x, y, z } = \rho x - y - x z, \\
+w \rbr{ x, y, z } = x y - \beta z.
+\end{gather}
+Here $\sigma$, $\rho$, $\beta$ are parameters for the Lorenz system. A typical choice of the parameters is $ \rho = 28 $, $ \sigma = 10 $ and $ \beta = 8 / 3 $, with which the Lorenz system has chaotic behavior.
+
+\section{Runge--Kutta integrators}
+
+For the ODE (ordinary differential equation) system \eqref{Eq:ODE}, we may consider numerical schemes to approximate the solution. We note that the system here is autonomous. We abbreviate the system as 
+\begin{equation} \label{Eq:ODESys}
+\frac{ \sd \mathbf{x} }{ \sd t } = \mathbf{u} \rbr{ \mathbf{x}, t } = \mathbf{u} \rbr{\mathbf{x}}.
+\end{equation}
+
+We select $h$ to be the time step with
+\begin{equation}
+t_n = n h
+\end{equation}
+as time nodes, and then consider to approximate $ \mathbf{x} \rbr{t_n} $ with $ \mathbf{X}_n $. A well-known family of integrators are Runge--Kutta methods. The basic idea is to define $m$ stages and update by
+\begin{equation}
+\mathbf{X}_{ n + 1 } = \mathbf{X}_n + h \sum_{ i = 1 }^m c_i \mathbf{K}_n^{i},
+\end{equation}
+where the intermediate variables can be carried out by
+\begin{equation}
+\mathbf{K}_n^i = \mathbf{u} \rbr{ \mathbf{X}_n + h \sum_{ j = 1 }^m b_{ i j } \mathbf{K}_n^j, t_n + a_i h }
+\end{equation}
+for $ i = 1, 2, \cdots, m $. Note that the system \eqref{Eq:ODESys} is autonomous, the $a_i$ term can be left out and we get
+\begin{equation}
+\mathbf{K}_n^i = \mathbf{u} \rbr{ \mathbf{X}_n + h \sum_{ j = 1 }^m b_{ i j } \mathbf{K}_n^j }.
+\end{equation}
+Nevertheless, the method itself can be condensed as the Butcher table
+\begin{equation}
+\begin{array}{c|cccc}
+a_1 & b_{ 1 1 } & b_{ 1 2 } & \cdots & b_{ 1 m } \\
+a_2 & b_{ 2 1 } & b_{ 2 2 } & \cdots & b_{ 2 m } \\
+\vdots & \vdots & \vdots & \ddots & \vdots \\
+a_m & b_{ m 1 } & b_{ m 2 } & \cdots & b_{ m m } \\
+\hline
+& c_1 & c_2 & \cdots & c_m
+\end{array}
+.
+\end{equation}
+Due to the consistency constraint, we obtain
+\begin{equation}
+a_i = \sum_{ j = 1 }^m b_{ i j }
+\end{equation}
+for $ i = 1, 2, \cdots, m $ and
+\begin{equation}
+\sum_{ i = 1 }^m c_i = 1.
+\end{equation}
+When $ b_{ i j } = 0 $ for any $ 1 \le i \le j \le m $, we can sequentially compute $\mathbf{K}_n^1$, $\mathbf{K}_n^2$ till $\mathbf{K}_n^m$. This leads to \emph{explicit} methods, using which does not involve solving non-linear equations. Other method are called \emph{implicit} methods.
+
+\subsection{\texttt{ode1} integrator}
+
+The most widely-used method is the explicit Euler method. The iterations can be directly written as
+\begin{equation}
+\mathbf{X}_{ n + 1 } = \mathbf{X}_n + h \mathbf{u} \rbr{\mathbf{X}_n}
+\end{equation}
+or as the Butcher table
+\begin{equation}
+\begin{array}{c|c}
+0 & 0 \\
+\hline
+& 1
+\end{array}
+.
+\end{equation}
+This method is of first order. We call it \verb"ode1" integrator here.
+
+\subsection{\texttt{ode4} integrator}
+
+Another widely-used method is the four-stage Runge--Kutta method, which can be written as
+\begin{equation}
+\mathbf{X}_{ n + 1 } = \mathbf{X}_n + \frac{1}{6} h \rbr{ \mathbf{K}_n^1 + 2 \mathbf{K}_n^2 + 2 \mathbf{K}_n^3 + \mathbf{K}_n^4 }
+\end{equation}
+where
+\begin{gather}
+\mathbf{K}_n^1 = \mathbf{u} \rbr{\mathbf{X}_n}, \\
+\mathbf{K}_n^2 = \mathbf{u} \rbr{ \mathbf{X}_n + \frac{1}{2} h \mathbf{K}_n^1 }, \\
+\mathbf{K}_n^3 = \mathbf{u} \rbr{ \mathbf{X}_n + \frac{1}{2} h \mathbf{K}_n^2 }, \\
+\mathbf{K}_n^4 = \mathbf{u} \rbr{ \mathbf{X}_n + h \mathbf{K}_n^3 }.
+\end{gather}
+The corresponding Butcher table is
+\begin{equation}
+\begin{array}{c|cccc}
+0 & 0 \\
+1 / 2 & 1 / 2 & 0 \\
+1 / 2 & 0 & 1 / 2 & 0 \\
+1 & 0 & 0 & 1 & 0 \\
+\hline
+& 1 / 6 & 1 / 3 & 1 / 3 & 1 / 6
+\end{array}
+.
+\end{equation}
+We call this \verb"ode4" integrator. This integrator enjoys a fourth order convergence.
+
+\section{Numerical results}
+
+We consider the time interval $ \sbr{ 0, T } $ in the following numerical results and set $N$ nodes. That is to say, we have
+\begin{equation}
+h = \frac{T}{N}.
+\end{equation}
+Without specified otherwise, we set $ T = 5 $. The initial values are set to be $ \rbr{ x \rbr{0}, y \rbr{0}, z \rbr{0} } = \rbr{ x_0, y_0, z_0 } $.
+
+\subsection{Chaos}
+
+We consider the standard Lorenz system $ \rho = 28 $, $ \sigma = 10 $ and $ \beta = 8 / 3 $ in this subsection. We set $ N = 50000 $ with $ \rbr{ x_0, y_0, z_0 } = \rbr{ 1, 0, 0 } $. The numerical results are shown in Figure \ref{Fig:Chaos}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure01.pgf}}
+\scalebox{0.5}{\input{Figure02.pgf}}
+\scalebox{0.5}{\input{Figure03.pgf}}
+\scalebox{0.5}{\input{Figure04.pgf}}
+\caption{Time evolution of standard Lorenz system}
+\label{Fig:Chaos}
+}
+{
+\footnotesize First row: time interval $ \sbr{ 0, 1 } $; second row: $ \sbr{ 1, 2 } $; third row: $ \sbr{ 2, 3 } $; fourth row: $ \sbr{ 3, 4 } $.
+}
+\end{figure}
+
+From this figure, we can observe that the point is attracted to the the neighborhood of $ \rbr{ -6 \sqrt{2}, -6 \sqrt{2}, 27 } $ and then goes away from that point. At some point, it is captured by $ \rbr{ 6 \sqrt{2}, 6 \sqrt{2}, 27 } $ and then again gets repelled again. The point gets repeatedly and chaotically attracted and repelled by these two points and forms a complex trajectory. The trajectory is bounded but not periodic nor convergent.
+
+\subsection{Initial values}
+
+We again consider the standard Lorenz system $ \rho = 28 $, $ \sigma = 10 $ and $ \beta = 8 / 3 $ in this subsection. We set $ N = 50000 $ again and change the initial point $ \rbr{ x_0, y_0, z_0 } $. The numerical results are shown in Figure \ref{Fig:Init1}, \ref{Fig:Init2}, \ref{Fig:Init3} and \ref{Fig:Init4}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure05.pgf}}
+\scalebox{0.5}{\input{Figure06.pgf}}
+\scalebox{0.5}{\input{Figure07.pgf}}
+\scalebox{0.5}{\input{Figure08.pgf}}
+\caption{Trajectories of the standard Lorenz system starting from $ \sbr{ x_0, 0, 0 }$}
+\label{Fig:Init1}
+}
+{
+\footnotesize First row: initial point $ \rbr{ 0.1, 0, 0 } $; second row: $ \rbr{ 1, 0, 0 } $; third row: $ \rbr{ 10, 0, 0 } $; fourth row: $ \rbr{ 100, 0, 0 } $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure09.pgf}}
+\scalebox{0.5}{\input{Figure10.pgf}}
+\scalebox{0.5}{\input{Figure11.pgf}}
+\scalebox{0.5}{\input{Figure12.pgf}}
+\caption{Trajectories of the standard Lorenz system starting from $ \sbr{ x_0, 0, 50 }$}
+\label{Fig:Init2}
+}
+{
+\footnotesize First row: initial point $ \rbr{ 0.1, 0, 50 } $; second row: $ \rbr{ 1, 0, 50 } $; third row: $ \rbr{ 10, 0, 50 } $; fourth row: $ \rbr{ 100, 0, 50 } $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure13.pgf}}
+\scalebox{0.5}{\input{Figure14.pgf}}
+\scalebox{0.5}{\input{Figure15.pgf}}
+\scalebox{0.5}{\input{Figure16.pgf}}
+\caption{Trajectories of the standard Lorenz system starting from $ \sbr{ 0, y_0, 0 }$}
+\label{Fig:Init3}
+}
+{
+\footnotesize First row: initial point $ \rbr{ 0, 0.1, 0 } $; second row: $ \rbr{ 0, 1, 0 } $; third row: $ \rbr{ 0, 10, 0 } $; fourth row: $ \rbr{ 0, 100, 0 } $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure17.pgf}}
+\scalebox{0.5}{\input{Figure18.pgf}}
+\scalebox{0.5}{\input{Figure19.pgf}}
+\scalebox{0.5}{\input{Figure20.pgf}}
+\caption{Trajectories of the standard Lorenz system starting from $ \sbr{ x_0, 0, 50 }$}
+\label{Fig:Init4}
+}
+{
+\footnotesize First row: initial point $ \rbr{ 0, 0.1, 50 } $; second row: $ \rbr{ 0, 1, 50 } $; third row: $ \rbr{ 0, 10, 50 } $; fourth row: $ \rbr{ 0, 100, 50 } $.
+}
+\end{figure}
+
+From these figures, we can see that the trajectories always turn to chaos as we explained in the previous section. The trajectories are again bounded but not periodic nor convergent.
+
+However, there are some special initial values which may lead to non-chaotic solutions. We show these values in Figure \ref{Fig:InitSpec}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure21.pgf}}
+\scalebox{0.5}{\input{Figure22.pgf}}
+\scalebox{0.5}{\input{Figure23.pgf}}
+\scalebox{0.5}{\input{Figure24.pgf}}
+\caption{Special trajectories of the standard Lorenz system}
+\label{Fig:InitSpec}
+}
+{
+\footnotesize First row: initial point $ \rbr{ 0, 0, 0 } $; second row: $ \rbr{ 6 \sqrt{2}, 6 \sqrt{2}, 27 } $; third row: $ \rbr{ -6 \sqrt{2}, -6 \sqrt{2}, 27 } $; fourth row: $ \rbr{ 0, 0, 50 } $.
+}
+\end{figure}
+
+We note that $ \rbr{ 0, 0, 0 } $ and $ \rbr{ \pm 6 \sqrt{2}, \pm 6 \sqrt{2}, 27 } $ are repulsive fixed points fo the standard Lorenz system, and therefore trajectories starting from them will be fixed but generally no trajectory converges to these points. The point $ \rbr{ 0, 0, 0 } $ is more special since it is attractive on the $z$-axis. To be exact, we may observe trajectory initiating from $ \rbr{ 0, 0, 50 } $ converging to $ \rbr{ 0, 0, 0 } $ quickly. Hence, $ \rbr{ 0, 0, 0 } $ is a fixed point which is repulsive at other directions than $z$-axis.
+
+\subsection{Parameters}
+
+We proceed to discuss about the parameters in the Lorenz system. We set $ N = 50000 $ with $ \rbr{ x_0, y_0, z_0 } = \rbr{ 1, 0, 0 } $.
+
+According to physics background, the range of parameters are specified by $ \rho \in \rbr{ 0, +\infty } $, $ \sigma \in \rbr{ 0, +\infty } $ and $ \beta \in \rbr{ 0, 4 } $.
+
+We first consider the case $ \sigma > \beta + 1 $. We set $ \sigma = 10 $ and $ \beta = 8 / 3 $ as in the standard Lorenz system. We vary $\rho$ and plot the trajectory in Figure \ref{Fig:BigRho1}, \ref{Fig:BigRho2} and \ref{Fig:BigRho3}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure25.pgf}}
+\scalebox{0.5}{\input{Figure26.pgf}}
+\scalebox{0.5}{\input{Figure27.pgf}}
+\scalebox{0.5}{\input{Figure28.pgf}}
+\caption{Trajectories of small $\rho$ with $ \sigma = 10 $ and $ \beta = 8 / 3 $}
+\label{Fig:BigRho1}
+}
+{
+\footnotesize First row: $ \rho = 0.5 $; second row: $ \rho = 1 $, third row: $ \rho = 2 $; fourth row: $ \rho = 15 $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure29.pgf}}
+\scalebox{0.5}{\input{Figure30.pgf}}
+\scalebox{0.5}{\input{Figure31.pgf}}
+\scalebox{0.5}{\input{Figure32.pgf}}
+\caption{Trajectories of moderate $\rho$ with $ \sigma = 10 $ and $ \beta = 8 / 3 $}
+\label{Fig:BigRho2}
+}
+{
+\footnotesize First row: $ \rho = 24 $; second row: $ \rho = 27 $, third row: $ \rho = 90 $; fourth row: $ \rho = 100 $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure33.pgf}}
+\scalebox{0.5}{\input{Figure34.pgf}}
+\scalebox{0.5}{\input{Figure35.pgf}}
+\scalebox{0.5}{\input{Figure36.pgf}}
+\caption{Trajectories of large $\rho$ with $ \sigma = 10 $ and $ \beta = 8 / 3 $}
+\label{Fig:BigRho3}
+}
+{
+\footnotesize First row: $ \rho = 125 $; second row: $ \rho = 150 $, third row: $ \rho = 200 $; fourth row: $ \rho = 250 $.
+}
+\end{figure}
+
+When $ 0 < \rho < 1 $, there is only one global attractor $ \rbr{ 0, 0, 0 } $ and any trajectory will converge to this point (first row in Figure \ref{Fig:BigRho1}). At $ \rho = 1 $ there is a bifurcation (second row in Figure \ref{Fig:BigRho1}). For $ 1 < \rho < \rho_0 $, points
+\begin{equation}
+\rbr{ \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \rho - 1 }
+\end{equation}
+are attractors and trajectories will converge to them (third row in Figure \ref{Fig:BigRho1}). When $\rho$ gets larger, the trajectory will go around these attractors (fourth row in Figure \ref{Fig:BigRho1}). When $\rho$ is very close to $\rho_0$, the attractive force is rather weak and the convergence is slow (first row in Figure \ref{Fig:BigRho2}). Actually the equation of $\rho_0$ is
+\begin{equation} \label{Eq:Sigma}
+\rho_0 = \sigma \frac{ \sigma + \beta + 3 }{ \sigma - \beta - 1 },
+\end{equation}
+which is exactly
+\begin{equation}
+\rho_0 = \frac{470}{19} \approx 24.73684
+\end{equation}
+in our case. When $ \rho > \rho_0 $, chaotic behavior occurs since
+\begin{equation}
+\rbr{ \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \rho - 1 }
+\end{equation}
+become repulsive (second row in Figure \ref{Fig:BigRho2}). Slightly larger $\rho_0$ will give similar results (third row in Figure \ref{Fig:BigRho2}), but at some point periodic orbit will come into place (fourth row in Figure \ref{Fig:BigRho2}). Actually, when $ \rho = 100 $, a non-trivial knot is formed. However, increasing $\rho$ will bring chaos back (first row in Figure \ref{Fig:BigRho3}), and some $ \rho = 150 $ again gives a knot (second row in Figure \ref{Fig:BigRho3}). Then chaos occurs again (third row in Figure \ref{Fig:BigRho3}). However, for $ \rho \ge 250 $, a trivial knot will remain (fourth row in Figure \ref{Fig:BigRho3}).
+
+We turn to the case $ \sigma < \beta + 1 $, as we can see the definition of $\rho_0$ \eqref{Eq:Sigma} fails here. We set $ \sigma = 2 $. The numerical results are given in Figure \ref{Fig:SmallRho}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure37.pgf}}
+\scalebox{0.5}{\input{Figure38.pgf}}
+\scalebox{0.5}{\input{Figure39.pgf}}
+\scalebox{0.5}{\input{Figure40.pgf}}
+\caption{Trajectories of moderate $\rho$ with $ \sigma = 2 $ and $ \beta = 8 / 3 $}
+\label{Fig:SmallRho}
+}
+{
+\footnotesize First row: $ \rho = 0.5 $; second row: $ \rho = 2 $, third row: $ \rho = 20 $; fourth row: $ \rho = 200 $.
+}
+\end{figure}
+
+When $ 0 < \rho < 1 $, $ \rbr{ 0, 0, 0 } $ is again the global attractor (first row in Figure \ref{Fig:SmallRho}). At $ \rho = 1 $ there is again a bifurcation. However, when $ \rho > 1 $ points
+\begin{equation}
+\rbr{ \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \pm \sqrt{ \beta \rbr{ \rho - 1 } }, \rho - 1 }
+\end{equation}
+are always attractive (second row in Figure \ref{Fig:SmallRho}). For large $\rho$, no chaotic behavior will be shown (third row in Figure \ref{Fig:SmallRho}). Larger $\rho$ means smaller attractive force at these points (fourth row in Figure \ref{Fig:SmallRho}).
+
+\subsection{Integrators}
+
+We finally proceed to discuss the influence of integrator and step size. We consider the standard Lorenz system $ \rho = 28 $, $ \sigma = 10 $ and $ \beta = 8 / 3 $ here. We set $ T = 5 $ and change the integrator and the step size $h$. The numerical results are shown in Figure \ref{Fig:Int1} and \ref{Fig:Int2}.
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure41.pgf}}
+\scalebox{0.5}{\input{Figure42.pgf}}
+\scalebox{0.5}{\input{Figure43.pgf}}
+\scalebox{0.5}{\input{Figure44.pgf}}
+\caption{Trajectories of standard Lorenz system with integrators and small step sizes}
+\label{Fig:Int1}
+}
+{
+\footnotesize First row: \texttt{ode4} and $ h = 10^{-3} $; second row: \texttt{ode1} and $ h = 10^{-3} $, third row: \texttt{ode4} and $ h = 10^{-2} $; fourth row: \texttt{ode1} and $ h = 10^{-2} $.
+}
+\end{figure}
+
+\begin{figure}[htbp]
+{
+\centering
+\scalebox{0.5}{\input{Figure45.pgf}}
+\scalebox{0.5}{\input{Figure46.pgf}}
+\scalebox{0.5}{\input{Figure47.pgf}}
+\scalebox{0.5}{\input{Figure48.pgf}}
+\caption{Trajectories of standard Lorenz system with integrators and large step sizes}
+\label{Fig:Int2}
+}
+{
+\footnotesize First row: \texttt{ode4} and $ h = 2 \times 10^{-2} $; second row: \texttt{ode1} and $ h = 2 \times 10^{-2} $, third row: \texttt{ode4} and $ h = 4 \times 10^{-2} $; fourth row: \texttt{ode1} and $ h = 4 \times 10^{-2} $.
+}
+\end{figure}
+
+Comparing these results we can see that $ h = 10^{-3} $ leads to convergence of \verb"ode4" integrator but not \verb"ode1", since the trajectories of $ h = 10^{-3} $ and $ h = 10^{-2} $ do not differ much with \verb"ode4". Although \verb"ode1" can preserve some structures of the chaos nature, it also miss some structures. Since the system is chaos, the error may get accumulated and hence huge error may be found in the terminal point. For large step size, such as $ h = 4 \times 10^{-2} $, the \verb"ode1" integrator blows up while \verb"ode4" is still able to capture some basic structure of the Lorenz acctrator.
+
+In conclusion, high order integrators both enjoy precision and stability. For chaotic systems, the precision is of higher importance, since the error may be accumulated.
+
+\end{document}

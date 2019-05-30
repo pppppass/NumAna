@@ -1,0 +1,57 @@
+%% Creator: Matplotlib, PGF backend
+%%
+%% To include the figure in your LaTeX document, write
+%%   \input{<filename>.pgf}
+%%
+%% Make sure the required packages are loaded in your preamble
+%%   \usepackage{pgf}
+%%
+%% Figures using additional raster images can only be included by \input if
+%% they are in the same directory as the main LaTeX file. For loading figures
+%% from other directories you can use the `import` package
+%%   \usepackage{import}
+%% and then include the figures with
+%%   \import{<path to file>}{<filename>.pgf}
+%%
+%% Matplotlib used the following preamble
+%%   \usepackage{fontspec}
+%%   \setmainfont{DejaVuSerif.ttf}[Path=/home/lzh/anaconda3/envs/numana/lib/python3.7/site-packages/matplotlib/mpl-data/fonts/ttf/]
+%%   \setsansfont{DejaVuSans.ttf}[Path=/home/lzh/anaconda3/envs/numana/lib/python3.7/site-packages/matplotlib/mpl-data/fonts/ttf/]
+%%   \setmonofont{DejaVuSansMono.ttf}[Path=/home/lzh/anaconda3/envs/numana/lib/python3.7/site-packages/matplotlib/mpl-data/fonts/ttf/]
+%%
+\begingroup%
+\makeatletter%
+\begin{pgfpicture}%
+\pgfpathrectangle{\pgfpointorigin}{\pgfqpoint{12.000000in}{4.000000in}}%
+\pgfusepath{use as bounding box, clip}%
+\begin{pgfscope}%
+\pgfsetbuttcap%
+\pgfsetmiterjoin%
+\definecolor{currentfill}{rgb}{1.000000,1.000000,1.000000}%
+\pgfsetfillcolor{currentfill}%
+\pgfsetlinewidth{0.000000pt}%
+\definecolor{currentstroke}{rgb}{1.000000,1.000000,1.000000}%
+\pgfsetstrokecolor{currentstroke}%
+\pgfsetdash{}{0pt}%
+\pgfpathmoveto{\pgfqpoint{0.000000in}{0.000000in}}%
+\pgfpathlineto{\pgfqpoint{12.000000in}{0.000000in}}%
+\pgfpathlineto{\pgfqpoint{12.000000in}{4.000000in}}%
+\pgfpathlineto{\pgfqpoint{0.000000in}{4.000000in}}%
+\pgfpathclose%
+\pgfusepath{fill}%
+\end{pgfscope}%
+\begin{pgfscope}%
+\pgfsys@transformshift{0.120000in}{0.120000in}%
+\pgftext[left,bottom]{\pgfimage[interpolate=true,width=3.830000in,height=3.730000in]{Figure35-img0.png}}%
+\end{pgfscope}%
+\begin{pgfscope}%
+\pgfsys@transformshift{4.100000in}{0.130000in}%
+\pgftext[left,bottom]{\pgfimage[interpolate=true,width=3.930000in,height=3.720000in]{Figure35-img1.png}}%
+\end{pgfscope}%
+\begin{pgfscope}%
+\pgfsys@transformshift{8.050000in}{0.150000in}%
+\pgftext[left,bottom]{\pgfimage[interpolate=true,width=3.950000in,height=3.700000in]{Figure35-img2.png}}%
+\end{pgfscope}%
+\end{pgfpicture}%
+\makeatother%
+\endgroup%
