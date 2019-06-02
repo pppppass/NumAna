@@ -1,4 +1,4 @@
-PGFOBJS = Figure1.pgf Figure2.pgf Figure3.pgf Figure4.pgf Figure5.pgf Figure6.pgf Figure7.pgf Figure8.pgf
+PGFOBJS = Figure01.pgf Figure02.pgf Figure03.pgf Figure04.pgf Figure05.pgf Figure06.pgf Figure07.pgf Figure08.pgf Figure09.pgf Figure10.pgf Figure11.pgf Figure12.pgf Figure13.pgf Figure14.pgf Figure15.pgf Figure16.pgf Figure17.pgf Figure18.pgf Figure19.pgf Figure20.pgf Figure21.pgf
 RUNOBJS = Problem1.run Problem2.run Problem3.run Problem4.run
 
 CDEPS = samp/sing_2d.c samp/metr_2d.c samp/kin_2d.c samp/kin_3d.c samp/utils.c samp/wrappers.c samp/samp.h
