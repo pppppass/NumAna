@@ -1,0 +1,308 @@
+%! TeX encoding = UTF-8
+%! TeX program = LuaLaTeX
+
+\documentclass[english, nochinese]{pnote}
+\usepackage[paper]{pdef}
+\usepackage{pgf}
+
+\DeclareMathOperator\ope{\mathrm{E}}
+\DeclareMathOperator\opvar{\mathrm{Var}}
+
+\title{Report of Project of Chapter 7}
+\author{Zhihan Li, 1600010653}
+\date{June 1, 2019}
+
+\begin{document}
+
+\maketitle
+
+\textbf{Problem (Page 208 Coding Exercise 4).} We consider the 2-D and 3-D lattice Ising model for the project. We implement Metropolis--Hastings MCMC (Markov chain Monte Carlo) method to study the phase transition in the 2-D case and further implmement the kinetic Monte Carlo method for butter convergence and to study both the 2-D and 3-D case. We estimate the change of internal energy, specific heat and magnetization as indicators of phase transition. We invoke RNG (random number generator) routines from Intel MKL (math kernel library). We deploy OpenMP to introduce parallelism and compile the C source codes with \verb"icc" (Intel C compiler) to speed up the computation. The discussion are presented in the following sections.
+
+\section{Ising model}
+
+The Ising model corresponds to a graph $G$, where edges connecting several vertices, named sites, with value $ \sigma_i = \pm 1 $ on them. The Hamiltonian is
+\begin{equation}
+H \rbr{\sigma} = - J \sum_{ \rbr{ i, j } \in E \rbr{G} } \sigma_i \sigma_j - h \sum_{ i \in V \rbr{G} } \sigma_i.
+\end{equation}
+We consider the Gibbs measure under this Hamiltonian, say the \emph{discrete} probability measure $\mu$ satisfying
+\begin{equation}
+\sd \mu \rbr{\cbr{\sigma}} = \frac{1}{Z} \sum_{\sigma} \exp \rbr{ -\beta H \rbr{\sigma} }
+\end{equation}
+with the normalizing constant $Z$ (partition function) and
+\begin{equation}
+\beta = \frac{1}{ k_{\text{B}} T }
+\end{equation}
+where $ k_{\text{B}} = 1 $ and $T$ is the temperature.
+
+The 2-D Ising model with $ N \times N $ square lattice and the 3-D one with $ N \times N \times N $ are considered in the following sections. The boundary conditions are set periodically.
+
+The Gibbs measure depicts the probability of configurations under a specified temperature $T$. Hence, we may extract average or say statistical values from the measure, which reflects the nature of the system. To be exact, in the 2-D case, the internal energy is defined as
+\begin{equation}
+u = \frac{1}{\abs{ V \rbr{G} }} U = \frac{1}{\abs{ V \rbr{G} }} \int H \rbr{\sigma} \sd \mu \rbr{\sigma}
+\end{equation}
+and the specific heat is defined as
+\begin{equation}
+\begin{split}
+c &= \frac{1}{\abs{ V \rbr{G} }} C = \frac{1}{\abs{ V \rbr{G} }} \int \rbr{ H \rbr{\sigma} - U }^2 \sd \mu \rbr{\sigma} \\
+&= \frac{1}{\abs{ V \rbr{G} }} \rbr{ \int H^2 \rbr{\sigma} \sd \mu \rbr{\sigma} - \rbr{ \int H \rbr{\sigma} \sd \mu \rbr{\sigma} }^2 }.
+\end{split}
+\end{equation}
+The magnetization represents the order and is calculated by
+\begin{equation}
+m = \frac{1}{\abs{ V \rbr{G} }} M = \frac{1}{\abs{ V \rbr{G} }} \int \sum_{ i \in V \rbr{G} } \abs{\sigma_i} \sd \mu \rbr{\sigma}.
+\end{equation}
+
+There is a critical temperature $T_{\text{c}}$ and the quantities above have some asymptotic behavior for $T$ near $T_{\text{c}}$.
+
+We finally plot a figure to show the phase transition in Ising models. We use the Metropolis algorithm introduced in Section \ref{Sec:Alg} and make 8 simulations under given temperature. We take $ \mathit{ITER} = 10^8 $. Here $N$ is set to be $32$. The figure of sites is shown in Figure \ref{Fig:Sites}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.75}
+{\input{Figure01.pgf}}
+\caption{Figure of sites}
+\label{Fig:Sites}
+\end{figure}
+
+One may directly observe the transition from $ T = 1.8 $ to $ T = 2.8 $. When $ T = 1.8 $, the system are highly correlated and there are only single sites different from others. But when $ T = 2.8 $ the system is not so self-correlated and there are random patterns. The sharpest transformation perceptually is at $ 2.2 \le T \le 2.4 $. This figure provides us some intuition about the system at different temperatures.
+
+\section{Markov Chain Monte Carlo algorithms} \label{Sec:Alg}
+
+\subsection{Metropolis--Hastings algorithm}
+
+In order to sample the Gibbs measure $\mu$, we apply Markov Chain Monte Carlo algorithm here. We first deploy the standard Metropolis--Hastings algorithm: the site of proposal is picked randomly from $ V \rbr{G} $ with uniform probability, and then the acceptance probability is determined by
+\begin{equation}
+A = \min \cbr{ \exp \rbr{ -\beta \Delta H }, 1 }.
+\end{equation}
+In practice, $ \Delta H $ is computed directly from the site $\sigma_i$ itself and its four or six neighbors. We sample a random number $r$ from $ \mathcal{U} \sbr{ 0, 1 } $ and decide to accept the transition if $ r < A $. Due to efficiency reasons, we apply the random number generator routines in Intel MKL to do this job. It follows from ergodicity that $\sigma$ will converge to the Gibbs distribution, which is the unique invariant distribution of the Markov Chain.
+
+For find the value of the quantities, we take average from the trajectory, and then take average from different trajectories. To be exact, if we simulate the trajectory for $\mathit{ITER}$ iterations, and then repeat for $\mathit{TRAJ}$ trajectories, the final estimation of some value of the form
+\begin{equation}
+\int F \rbr{\sigma} \sd \mu \rbr{\sigma}
+\end{equation}
+is
+\begin{equation} \label{Eq:Ave}
+\hat{F} = \frac{1}{\mathit{TRAJ}} \sum_{ \textit{tr} = 1 }^{\mathit{TRAJ}} \hat{F}_{\textit{tr}},
+\end{equation}
+where
+\begin{equation}
+\hat{F}_{\textit{tr}} = \frac{1}{ \mathit{END} - \mathit{STRAT} } \sum_{ \textit{it} = \mathit{START} + 1 }^{\mathit{END}} F \rbr{\sigma_{\mathit{tr}}^{\mathit{it}}} 
+\end{equation}
+where $ \sigma_{\mathit{tr}}^{\mathit{it}} $ stands at the $\mathit{it}$-th iteration and the $\mathit{tr}$-th trajectory. The standard deviation can also be estimated using
+\begin{equation}
+\hat{S} = \sqrt{ \frac{1}{\mathit{TRAJ}^2} \rbr{ \sum_{ \mathit{tr} = 1 }^{\mathit{TRAJ}} \hat{F}_{\textit{tr}}^2 - \rbr{ \sum_{ \mathit{tr} = 1 }^{\mathit{TRAJ}} \hat{F}_{\textit{tr}} }^2 } }.
+\end{equation}
+Of course we constrain $ 1 \le \mathit{START} < \mathit{END} \le \mathit{ITER} $. We set $\mathit{START}$ here to ignore some of the configurations in the beginning to reduce bias, since the Markov Chain converges to equilibrium only after a number of steps. We use OpenMP to perform parallel sampling and therefore uses multiple trajectories. Again ergodicity yields convergence.
+
+To observe its convergence, we take $ N = 16, 32, 64, 128 $ in the 2-D case and then check the curve of estimated $m$. We set $ \mathit{START} = \fbr{ \mathit{END} / 3 } $ and $ \mathit{END} = \mathit{END} $ and $ \mathit{TRAJ} = 4 $ since the machine we use have four cores. The figure is given in Figure \ref{Fig:Metro}. The shaded region stands for $ \hat{F} \pm 3 \hat{S} $ in correspondence to the $ 3 \sigma $ principle and we will use this convention all through the report. Here $ J = 1 $ and $ h = 0 $.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure03.pgf}}
+\caption{Magnetization $m$ with respect to iterations using Metropolis algorithm}
+\label{Fig:Metro}
+\end{figure}
+
+We can see generally that the sampling of $ T = 2.5, 3.0 $ converges in $ 2.5 \times 10^8 $ iterations, and the convergence speed is faster as $N$ increases since the absolute value of $m$ decreases. However, for $ T = 1.0, 1.5, 2.0 $, the convergence speed gets slower and slower and finally fails to convergence in $ 2.5 \times 10^8 $ iterations. Generally speaking, using Metropolis algorithm, we need $10^6$ iterations to establish equilibrium at $ N = 16 $ and $10^7$, $10^8$ and $ > 10^8 $ (we guess $10^9$) iterations at $ N = 32, 64, 128 $ respectively.
+
+\subsection{Kinetic Monte Carlo algorithm}
+
+The failure at smaller $T$ indicates the growth of rejection rate: for smaller $T$, the system gets correlated, and therefore a flip always leads to $ \Delta H > 0 $, which are more frequently rejected. Hence, we try and use the kinetic Monte Carlo algorithm. In this algorithm, the sites are classified according to the value of $\sigma_i$ and its neighbors, since $ \Delta H $ depends only on these sites. In the 2-D case, there are 10 classes, and we calculate the acceptance rate
+\begin{equation}
+A_c = \min \cbr{ \exp \rbr{ -\beta \Delta H_c }, 1 }
+\end{equation}
+where $ \Delta H_c $ is the increment of Hamiltonian in class $c$ for $ 1 \le c \le 10 $. We also count the number of sites in each class as $n_c$. As a result, we remove the possibility of rejection and sample class a single $c$ with probability
+\begin{equation}
+P_c \propto A_c n_c.
+\end{equation}
+We eventually flip a random site in class $c$. To calculate $\hat{F}$, we need to plug in \eqref{Eq:Ave} by
+\begin{equation}
+\hat{F}_{\mathit{tr}} = \bfrac{ \sum_{ \textit{it} = \textit{START} + 1 }^{\textit{END}} w_{\textit{tr}}^{\textit{it}} F \rbr{\sigma_{\mathit{tr}}^{\mathit{it}} } }{ \sum_{ \textit{it} = \textit{START} + 1 }^{\textit{END}} w_{\textit{tr}}^{\textit{it}} }
+\end{equation}
+and
+\begin{equation}
+w_{\textit{tr}}^{\textit{it}} = \bfrac{n^2}{ \sum_{ c = 1 }^{10} \rbr{ n_c A_c }_{\textit{tr}}^{\textit{it}} }
+\end{equation}
+is the expectation of iterations until next flip using Metropolis--Hastings algorithm. Again ergodicity yields the convergence.
+
+We also test the efficiency of kinetic Monte Carlo using identical settings. The figure is shown in Figure \ref{Fig:KMC}. Note that we use a stack to maintain the data structure such that each transition only takes $ O \rbr{1} $ time complexity. This heavily increase the expense of coding.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure02.pgf}}
+\caption{Magnetization $m$ with respect to iterations using kinetic Monte Carlo}
+\label{Fig:KMC}
+\end{figure}
+
+As we stated before, the advantage of kinetic Monte Carlo is that it completely remove the possibility of rejection. One may observe that the curve at $ T = 2.5, 3.0 $ does not change much since the error main stems from sampling instead of rejection. However, the convergence at $ T = 1.0, 1.5, 2.5 $ are dramatically boosted. Generally speaking, we can save $ 9 / 10 $ of the iterations, since the number of iterations of convergence at $ N = 16, 32, 64, 128 $ are about $ 10^5, 10^6, 10^7, 10^8 $ respectively.
+
+\section{Numerical results}
+
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"samp/etr_2d.c": Metropolis--Hastings sampler for the 2-D case;
+\item \verb"samp/kin_2d.c": kinetic Monte Carlo sampler for the 2-D case;
+\item \verb"samp/kin_dd.c": kinetic Monte Carlo sampler for the 3-D case;
+\item \verb"samp/sing_2d.c": single trajectory sampler using Metropolis--Hasting algorithm, for visualization;
+\item \verb"samp/utils.c": Miscellaneous routines.
+\end{partlist}
+We write Python wrappers for C functions in \verb"samp/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem*.py" and \verb"Plot.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default. We link against Intel MKL and OpenMP libraries.
+
+
+\subsection{2-D case using Metropolis--Hastings algorithm}
+
+We then proceed to check the quantities. We first use the Metropolis--Hastings method first. We first test a wide range of temperature $T$ with $ \mathit{TRAJ} = 4 $ and $ \mathit{ITER} = 2.5 \times 10^8 $. We produce the numerical result on a parallel 4-core machine. The 2-D case is given by Figure \ref{Fig:HeatSmall}, \ref{Fig:CapSmall} and \ref{Fig:MagSmall}. Here $J$ is set to be $1$ and $ h = 0 $.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure10.pgf}}
+\caption{Internal energy $u$ for different temperatures $T$ using Metropolis--Hastings algorithm}
+\label{Fig:HeatSmall}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure11.pgf}}
+\caption{Specific heat $c$ for different temperatures $T$ using Metropolis--Hastings algorithm}
+\label{Fig:CapSmall}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure12.pgf}}
+\caption{Magnetization $m$ for different temperatures $T$ using Metropolis--Hastings algorithm}
+\label{Fig:MagSmall}
+\end{figure}
+
+We can see from the figures that the internal energy $u$ has a steepest growth at about $ T = 2.3 $ and the specific heat has a sharp maximum point at the same temperature, which indicates the phase transition. Combined with Figure \ref{Fig:Sites}, this indicates that there is kind of phase transition near this temperature. (Convergence issues accounts for the failure of $ N = 128 $ at low temperatures.) As a result, we zoom in and perform numerical experiments in the interval $ \sbr{ 2.22, 2.32 } $. The numerical result is shown in Figure \ref{Fig:HeatBig}, \ref{Fig:CapBig} and \ref{Fig:MagBig}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure13.pgf}}
+\caption{Internal energy $u$ for finer temperature $T$ using Metropolis--Hastings algorithm}
+\label{Fig:HeatBig}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure14.pgf}}
+\caption{Specific heat $c$ for finer temperature $T$ using Metropolis--Hastings algorithm}
+\label{Fig:CapBig}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure15.pgf}}
+\caption{Magnetization $m$ for finer temperature $T$ using Metropolis--Hastings algorithm}
+\label{Fig:MagBig}
+\end{figure}
+
+We may find that the curves suffer from big variance and oscillation below the critical temperature. This is because of the huge rejection rate of Metropolis--Hastings algorithm when the temperature is low: the energy of some configurations is so low that it will hardly transfer to another configuration. The critical temperature is about 2.25 from the figure.
+
+\subsection{2-D case using kinetic Monte Carlo algorithm}
+
+We then turn to the improved algorithm --- kinetic Monte Carlo algorithm. We use identical numerical settings and obtain the numerical results in Figure \ref{Fig:HeatSmallKMC}, \ref{Fig:CapSmallKMC}, \ref{Fig:MagSmallKMC}, \ref{Fig:HeatBigKMC}, \ref{Fig:CapBigKMC} and \ref{Fig:MagSmallKMC}.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure04.pgf}}
+\caption{Internal energy $u$ for different temperatures $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:HeatSmallKMC}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure05.pgf}}
+\caption{Specific heat $c$ for different temperatures $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:CapSmallKMC}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure06.pgf}}
+\caption{Magnetization $m$ for different temperatures $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:MagSmallKMC}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure07.pgf}}
+\caption{Internal energy $u$ for finer temperature $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:HeatBigKMC}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure08.pgf}}
+\caption{Specific heat $c$ for finer temperature $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:CapBigKMC}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure09.pgf}}
+\caption{Magnetization $m$ for finer temperature $T$ using kinetic Monte Carlo algorithm}
+\label{Fig:MagBigKMC}
+\end{figure}
+
+In this case the curve is much smoother than the Metropolis--Hastings algorithm. After zooming in, the curve of internal energy $u$ just growth like a straight line, but the heat capacity reaches its maximum in the interval. From the figures, we conclude that the critical temperature is at about 2.27. To be precise, the critical temperature of $ N = 16, 32, 64, 128 $ is about 2.31, 2.29, 2.28, 2.27 respectively. We find the analytical critical temperature is
+\begin{equation}
+T_{\text{c}} = \frac{2}{ \ln \rbr{ 1 + \sqrt{2} } } \approx 2.268185
+\end{equation}
+and this is close to the results yielded by numerical simulation.
+
+\subsection{3-D case using kinetic Monte Carlo algorithm}
+
+We now turn to consider the 3-D case. We use the identical number of trajectories and iterations. Kinetic Monte Carlo is deployed since the convergence for 3-D case is much harder to achieve. The course resolution figure is shown in Figure \ref{Fig:HeatSmall3D}, \ref{Fig:CapSmall3D} and \ref{Fig:MagSmall3D}. The zoomed figure is shown in Figure \ref{Fig:HeatBig3D}, \ref{Fig:CapBig3D} and \ref{Fig:MagBig3D}. Note that the zooming in windows has shifted for different $T$.
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure16.pgf}}
+\caption{Internal energy $u$ for different temperatures $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:HeatSmall3D}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure17.pgf}}
+\caption{Specific heat $c$ for different temperatures $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:CapSmall3D}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure18.pgf}}
+\caption{Magnetization $m$ for different temperatures $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:MagSmall3D}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure19.pgf}}
+\caption{Internal energy $u$ for finer temperature $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:HeatBig3D}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure20.pgf}}
+\caption{Specific heat $c$ for finer temperature $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:CapBig3D}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\scalebox{0.666}{\input{Figure21.pgf}}
+\caption{Magnetization $m$ for finer temperature $T$ for the 3-D problem using kinetic Monte Carlo algorithm}
+\label{Fig:MagBig3D}
+\end{figure}
+
+The behavior of the 3-D case is rather similar to the 2-D one: near the critical temperature, the internal energy suddenly jumps up and there is a sharp maximum of heat capacity near the critical temperature, symboling the phase transition. From Figure \ref{Fig:CapBig3D}, we conclude that the critical temperatures are about 4.35, 4.43, 4.45, 4.47 for $ N = 8, 12, 16, 24 $. The phenomenon of varying temperature differs from the 2-D case. The limiting critical temperature is about $ T_{\text{c}} \approx 4.511536 $, which is again close to our numerical simulation. The finite number of $N$ may account for the difference.
+
+\section{Conclusion}
+
+We have verified the phase transition in the 2-D and 3-D Ising model, by investigating the internal energy $u$, specific heat $c$, magnetization $m$. The estimated critical temperature of the 2-D case is about 2.27 and the analytical solution is $ T_{\text{c}} \approx 2.268185 $. The estimated critical temperature of the 3-D case is about 4.47 and the more precise solution is $ T_{\text{c}} \approx 4.511536 $. Our numerical results fit quite well.
+
+The main difficulty lies in the computational side. The Markov Chain Monte Carlo algorithm it self requires a huge amount of computation to both convergence and reduction in variance. As a result, we adopt the kinetic Monte Carlo algorithm, implement the program in C, uses OpenMP to perform parallel sampling, and finally apply Intel MKL RNG routines to enhance the numerical results. We also apply some data structure techniques in kinetic Monte Carlo to keeps the transition step with time complexity $ O \rbr{1} $. However, the whole experiments takes a long time of 10 hours on a personal 4-core machine.
+
+\end{document}

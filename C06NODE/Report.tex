@@ -4,7 +4,6 @@
 \documentclass[english, nochinese]{pnote}
 \usepackage[paper, cgu]{pdef}
 \usepackage{pgf}
-\usepackage{caption}
 
 \title{Report of Project of Chapter 6}
 \author{Zhihan Li, 1600010653}
@@ -124,6 +123,14 @@ The corresponding Butcher table is
 We call this \verb"ode4" integrator. This integrator enjoys a fourth order convergence.
 
 \section{Numerical results}
+
+All the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"intg/eval.c": computation of $\mathbf{u}$;
+\item \verb"intg/ode1.c": \verb"ode1" integrator;
+\item \verb"intg/ode4.c": \verb"ode4" integrator.
+\end{partlist}
+We write Python wrappers for C functions in \verb"intg/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default.
 
 We consider the time interval $ \sbr{ 0, T } $ in the following numerical results and set $N$ nodes. That is to say, we have
 \begin{equation}
