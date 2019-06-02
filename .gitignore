@@ -5,12 +5,16 @@
 *.run
 Temporary/
 .ipynb_checkpoints/
+.*~/
+*.bak
 
 # Generated files
 *.synctex.gz
 *.pdf
 build/
 *.so
+*.dat
+*.dir
 
 # Binary files
 *.ipynb
