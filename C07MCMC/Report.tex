@@ -16,7 +16,40 @@
 
 \maketitle
 
-\textbf{Problem (Page 208 Coding Exercise 4).} We consider the 2-D and 3-D lattice Ising model for the project. We implement Metropolis--Hastings MCMC (Markov chain Monte Carlo) method to study the phase transition in the 2-D case and further implmement the kinetic Monte Carlo method for butter convergence and to study both the 2-D and 3-D case. We estimate the change of internal energy, specific heat and magnetization as indicators of phase transition. We invoke RNG (random number generator) routines from Intel MKL (math kernel library). We deploy OpenMP to introduce parallelism and compile the C source codes with \verb"icc" (Intel C compiler) to speed up the computation. The discussion are presented in the following sections.
+\textbf{Problem (Page 243 Exercise 2).} We consider two algorithm here. The first algorithm is the standard Box--Muller method, which generates independent $ U, V \sim \mathcal{U} \sbr{ 0, 1 } $ and then apply
+\begin{gather}
+X = \sqrt{ -2 \ln U } \cos \rbr{ 2 \spi V }, \\
+Y = \sqrt{ -2 \ln U } \sin \rbr{ 2 \spi V }.
+\end{gather}
+The second algorithm is the method described in the textbook, which generates independent $ U, V \sim \mathcal{I} \sbr{ -1, 1 } $, rejects samples satisfying $ R^2 = U^2 + V^2 \ge 1 $ and then compute
+\begin{gather}
+X = U \sqrt{ -2 \ln R^2 / R^2 }, \\
+Y = V \sqrt{ -2 \ln R^2 / R^2 }.
+\end{gather}
+The main efficiency difference comes from the comparison of special function evaluation ($\sin$ and $\cos$) and the $ 1 - \spi / 4 $ rejection rate. On some low-end machines (for example 8051), the evaluation of special functions is very slow since iterative computation must be performed, while the rejection is more acceptable. On modern day machines with FPU, the evaluation of special functions is very fast and rejection matters more. We generate $10^7$ pairs of samples and test the CPU time. The test is performed $100$ times, and both mean and variance are calculated. The CPU times are $\input{Text1.txt}$ and $\input{Text2.txt}$ respectively. We can see that the mean time of the first algorithm is faster. The second algorithm suffers from slightly large variance. We plot the scatter plot of $1000$ samples in Figure \ref{Fig:Algo1} and \ref{Fig:Algo2} respectively. We can see that the samples forms a multi-variate Gaussian distribution.
+
+\begin{figure}[htbp]
+\centering
+\input{Figure22.pgf}
+\caption{Scatter plot of $1000$ pairs of samples from the first algorithm}
+\label{Fig:Algo1}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\input{Figure23.pgf}
+\caption{Scatter plot of $1000$ pairs of samples from the second algorithm}
+\label{Fig:Algo2}
+\end{figure}
+
+For this problem, all the algorithms are implemented in C. To be exact, the layout is
+\begin{partlist}
+\item \verb"rand/gauss_box.c": Box--Muller method;
+\item \verb"rand/gauss_rej.c": Rejection based method.
+\end{partlist}
+We write Python wrappers for C functions in \verb"rand/wrappers.c" and we invoke Python packages to summarize the numerical results and generate figures. The visualization code is placed in \verb"Problem0.py". We use \verb"icc" instead of \verb"gcc" for the compiler by default.
+
+\textbf{Problem (Page 247 Coding Exercise 4).} We consider the 2-D and 3-D lattice Ising model for the project. We implement Metropolis--Hastings MCMC (Markov chain Monte Carlo) method to study the phase transition in the 2-D case and further implmement the kinetic Monte Carlo method for butter convergence and to study both the 2-D and 3-D case. We estimate the change of internal energy, specific heat and magnetization as indicators of phase transition. We invoke RNG (random number generator) routines from Intel MKL (math kernel library). We deploy OpenMP to introduce parallelism and compile the C source codes with \verb"icc" (Intel C compiler) to speed up the computation. The discussion are presented in the following sections.
 
 \section{Ising model}
 
